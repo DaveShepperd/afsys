@@ -1,0 +1,83 @@
+; See LICENSE.txt for license details
+;
+;	This file defines which game (for the game-specific stuff) and
+;	"includes" the appropriate files for host board, video hardware,
+;	and game controls.
+;
+;	Project:	afsys (Linux afsys task)
+;	Date:		Feb 2000
+;	Team:		Dave Shepperd, Mike Albaugh, Forrest Miller
+;
+.if true, OUTPUT_LANG == LANG_C
+/* See LICENSE.txt for license details */
+#if !defined(_CONFIG_H_)
+#define _CONFIG_H_
+.endc
+REM < Special Game Flags	>
+;
+; >>->  Define your processor and other hardware features
+;
+	.include constants.mac
+	HEX_CONST PROCESSOR		I86x32   ;MIPS7000L
+;
+	.include pptypes.mac
+;
+	HEX_CONST HOST_BOARD 		I86_PC ;VEGAS
+;
+	DEC_CONST _GNU_SOURCE	1	<Compile with GCC>
+	DEC_CONST NO_NEWLIB_FUNCS 1	<Not using newlib>
+_LINUX_ == 1
+.if true, OUTPUT_LANG == LANG_C
+#ifndef _LINUX_
+#define _LINUX_ 1
+#endif
+#define CONFIG_MIDWAY 1
+#define CONFIG_MIDWAY_ATLANTIS 1
+.endc
+;
+	DEC_CONST NO_GAME_CODE		1	< Go straight into test code >
+	DEC_CONST VIS_H_PIX_MAX		512
+	DEC_CONST VIS_V_PIX_MAX		384
+;
+	DEC_CONST INCLUDE_QIO		1	< Include the QIO subsystem >
+	DEC_CONST INCLUDE_FSYS		1	< Include the FSYS subsystem >
+	DEC_CONST INCLUDE_IDE		1	< Include special IDE interrupt in shims >
+	DEC_CONST FSYS_READ_ONLY        0       < filesys is r/w >
+	DEC_CONST FSYS_TIGHT_MEM        1       < filesys uses little mem >
+	DEC_CONST NO_FSYS_TEST          1       < Don't include filesystem test code >
+	DEC_CONST FSYS_NO_AUTOSYNC	1	< Don't include automatic sync >
+        DEC_CONST FSYS_ASYNC_CLOSE      1       < FSYS can use async close >
+	DEC_CONST FSYS_HAS_TQ_INS       0       < FSYS cannot use tq_ins >
+	DEC_CONST FSYS_USE_MALLOC	1	< Use malloc instead of _malloc_r() >
+.if true, OUTPUT_LANG == LANG_C
+#define HAVE_TIME		(1)		/* Allow the use of time() for file create */
+#define FSYS_FEATURES (FSYS_FEATURES_CMTIME|FSYS_FEATURES_JOURNAL)
+#define FSYS_OPTIONS FSYS_FEATURES
+#define FSYS_FIX_FREELIST	(1)		/* This global's back_to_free() and add_to_dirty() */
+;#define FSYS_SQUAWKING		(1)
+;#define FSYS_FREE_SQUAWKING	(1)
+;#define FSYS_SYNC_SQUAWKING	(1)
+;#define FSYS_SYNC_FREE_SQUAWKING (1)
+;#define FSYS_FH_SQUAWKING	(1)
+;#define FSYS_SQUAWKING_STDIO	(1)
+;#define FSYS_JOU_SQUAWKING	(1)
+;#define FSYS_TEST_NO_JCLEAN	(1)		/* Don't clean the journal after syncing */
+;#define FSYS_TEST_NO_SYNC	(1)		/* Journal, but don't sync */
+.endc
+	DEC_CONST QIO_NOSTDIO_SHIMS	1	< No shims >
+	DEC_CONST INCLUDE_QIO		1	< Need this >
+	DEC_CONST MAX_AST_QUEUES	1	< Enable AST processing >
+	DEC_CONST INTS_OFF		0	< Disable interrupts >
+	DEC_CONST NUM_HDRIVES		1	< Allow it to be used with a single drive >
+	DEC_CONST FSYS_INCLUDE_HB_READER 1	< Need to be able to read home blocks >
+;
+.if true, (OUTPUT_LANG == LANG_C)
+#include "lindefs.h"
+.endc				; OUTPUT_LANG == LANG_C
+;
+REM <	Hardware I/O>
+REM <			EOF				>
+;
+.if true, OUTPUT_LANG == LANG_C
+#endif				/* _CONFIG_H_ */
+.endc
