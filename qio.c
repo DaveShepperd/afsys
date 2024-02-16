@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
+
 #define QIO_LOCAL_DEFINES 1
 #include "qio.h"
 
@@ -84,6 +86,45 @@ int prc_set_ipl(int newIPL)
 }
 #endif
 
+#if __SIZEOF_POINTER__ > __SIZEOF_INT__
+void *qio_align(void *ptr, int algn)
+{
+	union
+	{
+		uint64_t var;
+		void *ptr;
+	} uu;
+	uu.ptr = ptr;
+	uu.var = (uu.var+(algn-1))&-algn;
+	return uu.ptr;
+}
+#endif
+
+#if !defined(__SIZEOF_POINTER__) || (__SIZEOF_POINTER__ > __SIZEOF_INT__)
+uint32_t qio_cvtFromPtr( const void *inp)
+{
+	union
+	{
+		uint64_t big;
+		uint32_t little;
+	} u;
+	u.big = (uint64_t)inp;
+	return u.little;
+}
+
+void *qio_cvtToPtr( uint32_t inp)
+{
+	union
+	{
+		void *big;
+		uint32_t little;
+	} u;
+	u.big = NULL;
+	u.little = inp;
+	return u.big;
+}
+#endif
+
 /************************************************************
  * qio_complete - call user's completion routine.
  * 
@@ -117,7 +158,7 @@ void __locktext qio_complete(QioIOQ *ioq)
     return;
 }
 
-static int null_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
+static int null_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len)
 {
     ioq->iostatus = QIO_EOF;
     ioq->iocount = 0;
@@ -125,12 +166,12 @@ static int null_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
     return 0;
 }
 
-static int null_read(QioIOQ *ioq, void *buf, long len)
+static int null_read(QioIOQ *ioq, void *buf, int32_t len)
 {
     return null_readwpos(ioq, 0, buf, len);
 }
 
-static int null_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
+static int null_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len)
 {
     ioq->iostatus = FSYS_IO_SUCC|SEVERITY_INFO;
     ioq->iocount = len;
@@ -138,7 +179,7 @@ static int null_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
     return 0;
 }
 
-static int null_write(QioIOQ *ioq, const void *buf, long len)
+static int null_write(QioIOQ *ioq, const void *buf, int32_t len)
 {
     return null_writewpos(ioq, 0, buf, len);
 }
@@ -286,7 +327,7 @@ int qio_install_dvc(const QioDevice *dvc)
 #endif
 
 static QioIOQ *ioq_pool_head;
-static int ioq_pool_batch;
+static int32_t ioq_pool_batch;
 static int num_ioq_gets, num_ioq_frees;
 
 QioIOQ * __locktext qio_getioq_ptr(QioIOQ **head, int size, int batch)
@@ -357,7 +398,7 @@ QioIOQ * __locktext qio_getioq(void)
             }
             else
             {
-                ioq_pool_batch = (int)st->value;
+                ioq_pool_batch = qio_cvtFromPtr(st->value);
             }
         }
         else
@@ -426,7 +467,7 @@ static QioFile * __locktext qio_getfile(void)
     QIO_SEM_RELEASE(oldipl);
     if (f)
     {
-        unsigned long gen = f->gen;
+        uint32_t gen = f->gen;
         memset(f, 0, sizeof(QioFile)); /* zap all fields in this struct */
         f->gen = gen;
     }
@@ -668,7 +709,7 @@ int __locktext qio_statfs(QioIOQ *ioq, const char *name, struct qio_statfs *stat
  * At exit:
  *	returns 0 if success or non-zero if error
  */
-int __locktext qio_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
+int __locktext qio_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -709,7 +750,7 @@ int __locktext qio_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
  *	non-zero if unable to queue the read and completion routne
  *	will _not_ be called in that case.
  */
-int __locktext qio_read(QioIOQ *ioq, void *buf, long len)
+int __locktext qio_read(QioIOQ *ioq, void *buf, int32_t len)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -760,7 +801,7 @@ int __locktext qio_read(QioIOQ *ioq, void *buf, long len)
  * At exit:
  *	returns 0 if success or non-zero if error
  */
-int __locktext qio_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
+int __locktext qio_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -798,7 +839,7 @@ int __locktext qio_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len
  *	non-zero if unable to queue the read and completion routne
  *	will _not_ be called in that case.
  */
-int __locktext qio_write(QioIOQ *ioq, const void *buf, long len)
+int __locktext qio_write(QioIOQ *ioq, const void *buf, int32_t len)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -1464,7 +1505,7 @@ int __locktext qio_closedir(QioIOQ *ioq, void *dirp)
     return sts;
 }
 
-int __locktext qio_seekdir(QioIOQ *ioq, void *dirp, long loc)
+int __locktext qio_seekdir(QioIOQ *ioq, void *dirp, int32_t loc)
 {
     if (!ioq) return QIO_INVARG;
     if (!dirp) return(ioq->iostatus = QIO_INVARG);
@@ -1714,7 +1755,7 @@ QioIOQ * __locktext qio_strip_ioq( QioMutex *pqm, int file )
  *
  *	Used in qio_eth.c by eth_cancel_ast and cmd_ide, phx_ide and fsys.c 
  */
-QioIOQ * __locktext qio_cleanup( QioMutex *pqm, int file, long status )
+QioIOQ * __locktext qio_cleanup( QioMutex *pqm, int file, off_t status )
 {
     QioIOQ *ph;
     QioIOQ *pioq;
@@ -1778,7 +1819,7 @@ int __locktext qio_complete_list(QioIOQ *ioq, U32 status)
  *	will _not_ be called in that case.
  */
 
-int __locktext qio_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt)
+int __locktext qio_readv(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -1817,7 +1858,7 @@ int __locktext qio_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt)
  *	will _not_ be called in that case.
  */
 
-int __locktext qio_writev(QioIOQ *ioq, const IOVect *iov, long iovcnt)
+int __locktext qio_writev(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt)
 {
     QioFile *file;
     const QioFileOps *ops;
@@ -1974,7 +2015,7 @@ static int wait_for_rw(QioIOQ *ioq, int sts)
     return sts;
 }
 
-int qiow_read(QioIOQ *ioq, void *buf, long len)
+int qiow_read(QioIOQ *ioq, void *buf, int32_t len)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -1983,7 +2024,7 @@ int qiow_read(QioIOQ *ioq, void *buf, long len)
     return wait_for_rw(ioq, sts);
 }
 
-int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
+int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -1992,7 +2033,7 @@ int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
     return wait_for_rw(ioq, sts);
 }
 
-int qiow_write(QioIOQ *ioq, const void *buf, long len)
+int qiow_write(QioIOQ *ioq, const void *buf, int32_t len)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -2001,7 +2042,7 @@ int qiow_write(QioIOQ *ioq, const void *buf, long len)
     return wait_for_rw(ioq, sts);
 }
 
-int qiow_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
+int qiow_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -2070,7 +2111,7 @@ int qiow_closedir(QioIOQ *ioq, void *dirp)
     return sts;
 }
 
-int qiow_seekdir(QioIOQ *ioq, void *dirp, long loc)
+int qiow_seekdir(QioIOQ *ioq, void *dirp, int32_t loc)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -2110,7 +2151,7 @@ int qiow_cancel(QioIOQ *ioq)
     return sts;
 }
 
-int qiow_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt)
+int qiow_readv(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -2119,7 +2160,7 @@ int qiow_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt)
     return wait_for_rw(ioq, sts);
 }
 
-int qiow_writev(QioIOQ *ioq, const IOVect *iov, long iovcnt)
+int qiow_writev(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt)
 {
     int sts;
     if (!ioq) return QIO_INVARG;
@@ -2474,7 +2515,7 @@ int write(int fd, const void *buf, int len)
     return val;
 }
 
-int ioctl(int fd, unsigned int cmd, unsigned long arg)
+int ioctl(int fd, unsigned int cmd, uint32_t arg)
 {
     QioIOQ *ioq;
     int sts, val = -1;

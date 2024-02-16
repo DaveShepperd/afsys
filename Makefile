@@ -39,7 +39,7 @@ DBG = -g
 OPT = #-O2
 
 # Compile build mode
-CMODE = -m32 -mtune=generic
+CMODE = -std=c99 -m32 -mtune=generic
 # Link mode
 LMODE = -m32
 
@@ -51,7 +51,7 @@ DEFS += -DINCLUDE_SCOPE_LOOP
 DEFS += -DINCLUDE_SCOPE_LOOP_NOINT
 DEFS += -DNDEBUG
 DEFS += -DAPOLLO_GUTS
-DEFS += -D__NO_LONG_LONG_DEFINES__
+#DEFS += -D__NO_LONG_LONG_DEFINES__
 DEFS += -D_REENTRANT 
 #DEFS += -D__NO_MATH_INLINES
 #DEFS += -D_REENT_H_ 

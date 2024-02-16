@@ -1427,8 +1427,8 @@ PARMS((
  *	the following hack is used. DON'T _E_V_E_R_ mess with the
  *	real eer_rtc. You have been warned.
  */
-extern volatile unsigned long __real_eer_rtc;
-#define eer_rtc (*(const volatile unsigned long*)& __real_eer_rtc)
+extern VU32 __real_eer_rtc;
+#define eer_rtc (*(const VU32*)& __real_eer_rtc)
 
 /*		eer_start(player), eer_stop(player)
  *	Simply calls eer_play() with the appropriate playmask to add/drop

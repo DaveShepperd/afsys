@@ -1,13 +1,11 @@
 /* See LICENSE.txt for license details */
 
-#include <config.h>
-#include <os_proto.h>
-#include <st_proto.h>
-#include <qio.h>
-#include <fsys.h>
-#include <nsprintf.h>
-#include "h_hdparse.h"
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE (1)
+#endif
+
 #include <stdio.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
@@ -17,7 +15,14 @@
 #include <sys/types.h>
 #include <utime.h>
 #include <time.h>
-#include <locale.h>
+
+#include "config.h"
+#include "os_proto.h"
+#include "st_proto.h"
+#include "qio.h"
+#include "fsys.h"
+#include "nsprintf.h"
+#include "h_hdparse.h"
 
 char *image_name;
 int default_copies = 1;
@@ -512,7 +517,7 @@ int is_boot_file(const char *fname)
 static int mark_home_block( unsigned long time, U32 *lbas, int which_boot )
 {
     FsysHomeBlock *hb;
-    unsigned long *lp, cksum;
+    U32 *lp, cksum;
     int ii, jj, sts;
     QioIOQ *ioq;
     U32 *bootlbas;
@@ -975,7 +980,7 @@ static int verify_game_to_unix(const char *unix_name, const char *game_name, int
     }
     if (u_cs != g_cs)
     {
-        fprintf(err_status, "Checksum mismatch. Unix file %s\n\tUnix=%08lX, Game=%08lX\n", unix_name, u_cs, g_cs);
+        fprintf(err_status, "Checksum mismatch. Unix file %s\n\tUnix=%08X, Game=%08X\n", unix_name, u_cs, g_cs);
     }
     fclose(ufp);
     qiow_close(ioq);
@@ -1318,6 +1323,15 @@ int main(int argc, char *argv[])
     char *s, c, tphys[16];
     ParseUnion tpu, tvol;
 
+#if 0
+    if ( sizeof(long) > 4 )
+    {
+        long lsz=sizeof(long), isz=sizeof(int), psz=sizeof(char *);
+        printf("Sorry, this program, as written, has to be built as a 32 bit app.\n\tsizeof(long)=%ld, sizeof(int)=%ld, sizeof(*)=%ld, need 4, 4, 'don't care' respectively\n",
+               lsz, isz, psz);
+        return 1;
+    }
+#endif
     image_name = argv[0];
     --argc;
     ++argv;

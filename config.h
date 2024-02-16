@@ -29,6 +29,7 @@
 #define MIPS7000L (0x3D)	/* MIPS 7000 processor, little endian */
 #define CX486 (0x41)	/* Cyrix 486/pentium */
 #define I86x32 (0x42)	/* Plain 32 bit i86 platform */
+#define I86x64 (0x43)	/* Plain 64 bit i86 platform */
 #define HOST_BOARD_CLASS (0x0FFFFFFF0)
 #define EC020cojag (0x10)	/* McKee's low cost EC020 host board, CoJag version */
 #define EC020zoid10 (0x20)	/* McKee's low cost EC020 host board, Zoid 10 version */
@@ -121,40 +122,53 @@
 #define ANSI_OK (0x1)
 #endif			/* _CONSTANTS_H_ */
 #define PROCESSOR (0x42)
+#define NO_LONGLONG (0)	/*Allow long long types*/
 #if !defined(_PPTYPES_H_)
 #define _PPTYPES_H_
-#define NO_LONGLONG (0x1)
+#include <stdint.h>
+#define S32_MAX (0x7FFFFFFF)
+#define S32_MIN (0x80000000)
+#define U32_MAX (0x0FFFFFFFF)
+#define U32_MIN (0x0)
+#ifndef __VS64_TYPE_DEFINED
+#define __VS64_TYPE_DEFINED
+typedef volatile long long VS64;
+#endif /* __VS64_TYPE_DEFINED */
+#ifndef __VU64_TYPE_DEFINED
+#define __VU64_TYPE_DEFINED
+typedef volatile unsigned long long VU64;
+#endif /* __VU64_TYPE_DEFINED */
 #ifndef __VS32_TYPE_DEFINED
 #define __VS32_TYPE_DEFINED
-typedef volatile long VS32;
+typedef volatile int32_t VS32;
 #endif /* __VS32_TYPE_DEFINED */
 #ifndef __VS16_TYPE_DEFINED
 #define __VS16_TYPE_DEFINED
-typedef volatile short VS16;
+typedef volatile int16_t VS16;
 #endif /* __VS16_TYPE_DEFINED */
 #ifndef __VS8_TYPE_DEFINED
 #define __VS8_TYPE_DEFINED
-typedef volatile signed char VS8;
+typedef volatile int8_t VS8;
 #endif /* __VS8_TYPE_DEFINED */
 #ifndef __VS08_TYPE_DEFINED
 #define __VS08_TYPE_DEFINED
-typedef volatile signed char VS08;
+typedef volatile int8_t VS08;
 #endif /* __VS08_TYPE_DEFINED */
 #ifndef __VU32_TYPE_DEFINED
 #define __VU32_TYPE_DEFINED
-typedef volatile unsigned long VU32;
+typedef volatile uint32_t VU32;
 #endif /* __VU32_TYPE_DEFINED */
 #ifndef __VU16_TYPE_DEFINED
 #define __VU16_TYPE_DEFINED
-typedef volatile unsigned short VU16;
+typedef volatile uint16_t VU16;
 #endif /* __VU16_TYPE_DEFINED */
 #ifndef __VU8_TYPE_DEFINED
 #define __VU8_TYPE_DEFINED
-typedef volatile unsigned char VU8;
+typedef volatile uint8_t VU8;
 #endif /* __VU8_TYPE_DEFINED */
 #ifndef __VU08_TYPE_DEFINED
 #define __VU08_TYPE_DEFINED
-typedef volatile unsigned char VU08;
+typedef volatile uint8_t VU08;
 #endif /* __VU08_TYPE_DEFINED */
 #ifndef __VF32_TYPE_DEFINED
 #define __VF32_TYPE_DEFINED
@@ -166,43 +180,43 @@ typedef volatile double VF64;
 #endif /* __VF64_TYPE_DEFINED */
 #ifndef __m_int_TYPE_DEFINED
 #define __m_int_TYPE_DEFINED
-typedef int m_int;
+typedef int32_t m_int;
 #endif /* __m_int_TYPE_DEFINED */
 #ifndef __m_uint_TYPE_DEFINED
 #define __m_uint_TYPE_DEFINED
-typedef unsigned int m_uint;
+typedef uint32_t m_uint;
 #endif /* __m_uint_TYPE_DEFINED */
 #ifndef __U8_TYPE_DEFINED
 #define __U8_TYPE_DEFINED
-typedef unsigned char U8;
+typedef uint8_t U8;
 #endif /* __U8_TYPE_DEFINED */
 #ifndef __U08_TYPE_DEFINED
 #define __U08_TYPE_DEFINED
-typedef unsigned char U08;
+typedef uint8_t U08;
 #endif /* __U08_TYPE_DEFINED */
 #ifndef __S8_TYPE_DEFINED
 #define __S8_TYPE_DEFINED
-typedef signed char S8;
+typedef int8_t S8;
 #endif /* __S8_TYPE_DEFINED */
 #ifndef __S08_TYPE_DEFINED
 #define __S08_TYPE_DEFINED
-typedef signed char S08;
+typedef int8_t S08;
 #endif /* __S08_TYPE_DEFINED */
 #ifndef __U16_TYPE_DEFINED
 #define __U16_TYPE_DEFINED
-typedef unsigned short U16;
+typedef uint16_t U16;
 #endif /* __U16_TYPE_DEFINED */
 #ifndef __S16_TYPE_DEFINED
 #define __S16_TYPE_DEFINED
-typedef short S16;
+typedef int16_t S16;
 #endif /* __S16_TYPE_DEFINED */
 #ifndef __U32_TYPE_DEFINED
 #define __U32_TYPE_DEFINED
-typedef unsigned long U32;
+typedef uint32_t U32;
 #endif /* __U32_TYPE_DEFINED */
 #ifndef __S32_TYPE_DEFINED
 #define __S32_TYPE_DEFINED
-typedef long S32;
+typedef int32_t S32;
 #endif /* __S32_TYPE_DEFINED */
 #ifndef __F32_TYPE_DEFINED
 #define __F32_TYPE_DEFINED
@@ -212,6 +226,14 @@ typedef float F32;
 #define __F64_TYPE_DEFINED
 typedef double F64;
 #endif /* __F64_TYPE_DEFINED */
+#ifndef __S64_TYPE_DEFINED
+#define __S64_TYPE_DEFINED
+typedef long long S64;
+#endif /* __S64_TYPE_DEFINED */
+#ifndef __U64_TYPE_DEFINED
+#define __U64_TYPE_DEFINED
+typedef unsigned long long U64;
+#endif /* __U64_TYPE_DEFINED */
 #ifndef __RD_TYP_TYPE_DEFINED
 #define __RD_TYP_TYPE_DEFINED
 typedef struct rdb RD_TYP;
@@ -241,9 +263,9 @@ struct menub {
 	void		(*mn_call)();	/* menu item routine call	*/
 };
 struct creditsb {
-	unsigned short	crd_whole;	/* Integer part of coins	*/
-	unsigned char	crd_num;	/* numerator			*/
-	unsigned char	crd_denom;	/* denominator			*/
+	uint16_t	crd_whole;	/* Integer part of coins	*/
+	uint8_t		crd_num;	/* numerator			*/
+	uint8_t		crd_denom;	/* denominator			*/
 };
 struct st_envar {
 const char * name;	/*  for lookup */

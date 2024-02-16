@@ -7,6 +7,7 @@ extern "C" {
 
 #include <sys/types.h>		/* need off_t */
 #include <qio.h>		/* need struct qio_ioq */
+#include <stdint.h>
 
 #ifndef BYTES_PER_SECTOR
 # define BYTES_PER_SECTOR (512)
@@ -381,87 +382,87 @@ enum filesys {
 /* Description of volume home block */
 
 typedef struct home_block {
-    unsigned long id;			/* block ID type. s/b FEEDF00D */
-    unsigned short hb_minor;		/* home block minor version */
-    unsigned short hb_major;		/* home block major version */
-    unsigned short hb_size;		/* size in bytes of home block struct */
-    unsigned short fh_minor;		/* file header minor version */
-    unsigned short fh_major;		/* file header major version */
-    unsigned short fh_size;		/* size in bytes of file header struct */
-    unsigned short fh_ptrs;		/* number of retrieval pointers in a file header */
-    unsigned short efh_minor;		/* extension file header minor version */
-    unsigned short efh_major;		/* extension file header major version */
-    unsigned short efh_size;		/* size in bytes of extension file header struct */
-    unsigned short efh_ptrs;		/* number of retrieval pointers in an extension file header */
-    unsigned short rp_minor;		/* retrieval pointer minor version */
-    unsigned short rp_major;		/* retrieval pointer major version */
-    unsigned short rp_size;		/* size in bytes of retrieval pointer struct */
-    unsigned short cluster;		/* blocks per cluster */
-    unsigned short maxalts;		/* number of alternates on this volume */
-    unsigned long def_extend;		/* default number of clusters to extend files */
-    unsigned long ctime;		/* volume creation date/time */
-    unsigned long mtime;		/* volume modification date/time */
-    unsigned long atime;		/* volume access date/time */
-    unsigned long btime;		/* volume backup date/time */
-    unsigned long chksum;		/* home block checksum */
-    unsigned long features;		/* file system features */
-    unsigned long options;		/* file system options */
-    unsigned long index[FSYS_MAX_ALTS]; /* up to n ptrs to index.sys files */
-    unsigned long boot[FSYS_MAX_ALTS];	/* up to n ptrs to boot file */
-    unsigned long max_lba;		/* number of LBA's allocated to this volume */
-    unsigned long hb_range;		/* just for fsysdmp's benefit */
-    unsigned long upd_flag;		/* update indicator when set */
-    unsigned long boot1[FSYS_MAX_ALTS];	/* up to n ptrs to secondary boot file */
-    unsigned long boot2[FSYS_MAX_ALTS];	/* up to n ptrs to tertiary boot file */
-    unsigned long boot3[FSYS_MAX_ALTS];	/* up to n ptrs to (?)ary boot file */
-    unsigned long journal[FSYS_MAX_ALTS]; /* ptrs to the journal fileheader */
+    uint32_t id;			/* block ID type. s/b FEEDF00D */
+    uint16_t hb_minor;		/* home block minor version */
+    uint16_t hb_major;		/* home block major version */
+    uint16_t hb_size;		/* size in bytes of home block struct */
+    uint16_t fh_minor;		/* file header minor version */
+    uint16_t fh_major;		/* file header major version */
+    uint16_t fh_size;		/* size in bytes of file header struct */
+    uint16_t fh_ptrs;		/* number of retrieval pointers in a file header */
+    uint16_t efh_minor;		/* extension file header minor version */
+    uint16_t efh_major;		/* extension file header major version */
+    uint16_t efh_size;		/* size in bytes of extension file header struct */
+    uint16_t efh_ptrs;		/* number of retrieval pointers in an extension file header */
+    uint16_t rp_minor;		/* retrieval pointer minor version */
+    uint16_t rp_major;		/* retrieval pointer major version */
+    uint16_t rp_size;		/* size in bytes of retrieval pointer struct */
+    uint16_t cluster;		/* blocks per cluster */
+    uint16_t maxalts;		/* number of alternates on this volume */
+    uint32_t def_extend;		/* default number of clusters to extend files */
+    uint32_t ctime;		/* volume creation date/time */
+    uint32_t mtime;		/* volume modification date/time */
+    uint32_t atime;		/* volume access date/time */
+    uint32_t btime;		/* volume backup date/time */
+    uint32_t chksum;		/* home block checksum */
+    uint32_t features;		/* file system features */
+    uint32_t options;		/* file system options */
+    uint32_t index[FSYS_MAX_ALTS]; /* up to n ptrs to index.sys files */
+    uint32_t boot[FSYS_MAX_ALTS];	/* up to n ptrs to boot file */
+    uint32_t max_lba;		/* number of LBA's allocated to this volume */
+    uint32_t hb_range;		/* just for fsysdmp's benefit */
+    uint32_t upd_flag;		/* update indicator when set */
+    uint32_t boot1[FSYS_MAX_ALTS];	/* up to n ptrs to secondary boot file */
+    uint32_t boot2[FSYS_MAX_ALTS];	/* up to n ptrs to tertiary boot file */
+    uint32_t boot3[FSYS_MAX_ALTS];	/* up to n ptrs to (?)ary boot file */
+    uint32_t journal[FSYS_MAX_ALTS]; /* ptrs to the journal fileheader */
 } FsysHomeBlock;
 
 /* Description of retrieval pointer */
 
 typedef struct file_retptr {
-    unsigned long start;		/* starting lba */
-    unsigned long nblocks;		/* number of contigious clusters */
+    uint32_t start;		/* starting lba */
+    uint32_t nblocks;		/* number of contigious clusters */
 # if defined(FSYS_REPEAT_SKIP) && FSYS_REPEAT_SKIP
-    unsigned long repeat;		/* number of times to repeat the nblocks/skip pair */
-    unsigned long skip;			/* number of clusters to skip */
+    uint32_t repeat;		/* number of times to repeat the nblocks/skip pair */
+    uint32_t skip;			/* number of clusters to skip */
 # endif
 } FsysRetPtr;
 
 /* Description of file header */
 
 typedef struct file_header {
-    unsigned long id;			/* file header type */
-    unsigned long size;			/* file size in bytes */
-    unsigned long clusters;		/* number of clusters allocated for this file */
+    uint32_t id;			/* file header type */
+    uint32_t size;			/* file size in bytes */
+    uint32_t clusters;		/* number of clusters allocated for this file */
     unsigned char generation;		/* file's generation number */
     unsigned char type;			/* file type (see above for types) */
-    unsigned short flags;		/* spare (to fill out to longword) */
+    uint16_t flags;		/* spare (to fill out to longword) */
 #define FSYS_FH_FLAGS_NEW	(0x0001) /* File is newly created but not closed */
 #define FSYS_FH_FLAGS_OPEN	(0x0002) /* File was opened for write but not closed */
 #if (FSYS_FEATURES&FSYS_FEATURES_EXTENSION_HEADER)
-    unsigned long extension;		/* index to file header extension */
+    uint32_t extension;		/* index to file header extension */
 # define FSYS_FHEADER_EXT	1
 #else
 # define FSYS_FHEADER_EXT	0
 #endif
 #if (FSYS_FEATURES&FSYS_FEATURES_CMTIME)
-    unsigned long ctime;		/* file creation time */
-    unsigned long mtime;		/* file modification time */
+    uint32_t ctime;		/* file creation time */
+    uint32_t mtime;		/* file modification time */
 # define FSYS_FHEADER_CMTIME	2
 #else
 # define FSYS_FHEADER_CMTIME	0
 #endif
 #if (FSYS_FEATURES&FSYS_FEATURES_ABTIME)
-    unsigned long atime;		/* file access time */
-    unsigned long btime;		/* file backup time */
+    uint32_t atime;		/* file access time */
+    uint32_t btime;		/* file backup time */
 # define FSYS_FHEADER_ABTIME	2
 #else
 # define FSYS_FHEADER_ABTIME	0
 #endif
 #if (FSYS_FEATURES&FSYS_FEATURES_PERMS)
-    unsigned long owner;		/* file owner (for future use) */
-    unsigned long perms;		/* file permissions (for future use) */
+    uint32_t owner;		/* file owner (for future use) */
+    uint32_t perms;		/* file permissions (for future use) */
 # define FSYS_FHEADER_PERMS	2
 #else
 # define FSYS_FHEADER_PERMS	0
@@ -472,7 +473,7 @@ typedef struct file_header {
  * such that the sizeof(struct file_header) is <= BYTPSECT. The FSYS_FHEADER_MEMBS in the
  * expression below is the number of long's appearing ahead of this member.
  */
-#define FSYS_MAX_FHPTRS	(((BYTES_PER_SECTOR-sizeof(long)*FSYS_FHEADER_MEMBS)/sizeof(FsysRetPtr))/FSYS_MAX_ALTS)
+#define FSYS_MAX_FHPTRS	(((BYTES_PER_SECTOR-sizeof(uint32_t)*FSYS_FHEADER_MEMBS)/sizeof(FsysRetPtr))/FSYS_MAX_ALTS)
 /*
  */
     FsysRetPtr pointers[FSYS_MAX_ALTS][FSYS_MAX_FHPTRS]; /* retrieval pointers */
@@ -482,15 +483,15 @@ typedef struct file_header {
 /* Description of extension file header */
 
 typedef struct efile_header {
-    unsigned long id;			/* file header type */
-    unsigned long head;			/* pointer to first header in list */
-    unsigned long extension;		/* ptr to next file header extension */
+    uint32_t id;			/* file header type */
+    uint32_t head;			/* pointer to first header in list */
+    uint32_t extension;		/* ptr to next file header extension */
 /*
  * Set this to the maximum number of retrieval pointers in an extension file header.
  * It is set such that the sizeof(struct efile_header) is <= BYTPSECT. The '3' in the
  * expression below is the number of long's appearing ahead of this member.
  */
-#define FSYS_MAX_EFHPTRS	(((BYTES_PER_SECTOR-sizeof(long)*3)/sizeof(FsysRetPtr))/FSYS_MAX_ALTS)
+#define FSYS_MAX_EFHPTRS	(((BYTES_PER_SECTOR-sizeof(uint32_t)*3)/sizeof(FsysRetPtr))/FSYS_MAX_ALTS)
 /*
  */
     FsysRetPtr pointers[FSYS_MAX_ALTS][FSYS_MAX_EFHPTRS]; /* retrieval pointers */
@@ -514,20 +515,20 @@ typedef struct ram_rp {
 typedef struct ram_fileheader {		/* RAM based file header */
     struct fsys_dirent **directory;	/* pointer to directory hash table if this is a directory */
 #if !FSYS_READ_ONLY
-    unsigned long clusters;		/* file allocation in sectors */
+    uint32_t clusters;		/* file allocation in sectors */
 #endif
-    unsigned long size;			/* size of file in bytes */
+    uint32_t size;			/* size of file in bytes */
 # if (FSYS_FEATURES&FSYS_OPTIONS&FSYS_FEATURES_CMTIME)
-    unsigned long ctime;		/* creation time of this file */
-    unsigned long mtime;		/* modification time on this file */
+    uint32_t ctime;		/* creation time of this file */
+    uint32_t mtime;		/* modification time on this file */
 # endif
 # if (FSYS_FEATURES&FSYS_OPTIONS&FSYS_FEATURES_ABTIME)
-    unsigned long atime;
-    unsigned long btime;
+    uint32_t atime;
+    uint32_t btime;
 # endif
 # if defined(FSYS_OPTIONS_PERMS) && (FSYS_FEATURES&FSYS_OPTIONS&FSYS_OPTIONS_PERMS)
-    unsigned long perms;		/* file access permissions */
-    unsigned long owner;		/* who owns this file */
+    uint32_t perms;		/* file access permissions */
+    uint32_t owner;		/* who owns this file */
 # endif
     FsysRamRP ramrp[FSYS_MAX_ALTS];	/* retrieval pointers */
     unsigned int def_extend:16;		/* amount to extend file by default */
@@ -548,18 +549,18 @@ typedef struct fsys_qio {
     FsysRamRP *ramrp;			/* pointer to list of retrieval pointers */
     int state;				/* read state */
     int flag;				/* I/O control flag */
-    unsigned long sector;		/* user's relative sector number */
+    uint32_t sector;		/* user's relative sector number */
     unsigned char *buff;		/* pointer to user's buffer */
-    unsigned long total;		/* total bytes xferred */
-    unsigned long count;		/* number of sectors to read/write */
-    unsigned long u_len;		/* user's byte count */
+    uint32_t total;		/* total bytes xferred */
+    uint32_t count;		/* number of sectors to read/write */
+    uint32_t u_len;		/* user's byte count */
     unsigned char *o_buff;		/* original buffer pointer */
-    unsigned long o_len;		/* original length */
-    unsigned long o_where;		/* original relative sector number */
+    uint32_t o_len;		/* original length */
+    uint32_t o_where;		/* original relative sector number */
     int bws;				/* current bws */
     int o_bws;				/* original byte witin sector */
     int o_which;			/* which of the ALTS we are writing */
-    unsigned long o_iostatus;		/* remember the last error, if any */
+    uint32_t o_iostatus;		/* remember the last error, if any */
     void (*complt)(struct qio_ioq *);	/* pointer to completion routine */
     QioFile *fsys_fp;			/* pointer to file sys's QioFile */
     QioIOQ *callers_ioq;		/* remember ptr to caller's IOQ */
@@ -569,7 +570,7 @@ typedef struct fsys_qio {
 typedef struct fsys_dirent {
     struct fsys_dirent *next;		/* ptr to next entry */
     const char *name;			/* ptr to null terminated name of file */
-    unsigned long gen_fid;		/* combined generation/fid */
+    uint32_t gen_fid;		/* combined generation/fid */
 } FsysDirEnt;
 #define FSYS_DIR_GENSHF		(24)	/* upper 8 bits is generation number */
 #define FSYS_DIR_FIDMASK	((1l<<FSYS_DIR_GENSHF)-1)
@@ -595,14 +596,14 @@ typedef struct fsys_sync {
     struct tq sync_t;			/* entry for sync timer function */
 # endif
     int status;				/* return status from last sync */
-    unsigned long errcnt;		/* total number of errors encountered during syncs */
-    unsigned long errlog[FSYS_SYNC_ERRLOG]; /* error history log */
+    uint32_t errcnt;		/* total number of errors encountered during syncs */
+    uint32_t errlog[FSYS_SYNC_ERRLOG]; /* error history log */
     int err_in;				/* index into errlog to place next entry */
     FsysRamRP ramrp;			/* fake ram retrieval pointer */
     FsysRetPtr rptr;			/* fake retrieval pointer used to r/w the file header */
     int buffer_size;			/* size of buffers in bytes */
-    unsigned long *buffers;		/* virtual mem ptr to following buffer */
-    unsigned long *output;		/* adjusted non-cached pointer to output buffer */
+    uint32_t *buffers;		/* virtual mem ptr to following buffer */
+    uint32_t *output;		/* adjusted non-cached pointer to output buffer */
     int buff_p;				/* next byte to write in 'output' */
     int state;				/* current sync state */
     int nxt_state;			/* next sync state */
@@ -649,7 +650,7 @@ typedef struct fsys_index_link {
 
 typedef struct fsys_volume {
     FsysQio reader;			/* !!!This absolutely must be the first member !!! */
-    unsigned long id;			/* distinguishing marker for this struct */
+    uint32_t id;			/* distinguishing marker for this struct */
     U32 features;			/* feature list from home block */
     QioMutex mutex;			/* I/O mutex for this volume */
     int iofd;				/* FD to use to do I/O */
@@ -657,14 +658,14 @@ typedef struct fsys_volume {
     volatile int status;		/* volume mount status */
     volatile int state;			/* volume mount state */
     int substate;			/* mount substate */
-    unsigned long hd_offset;		/* amount to add before doing any physical disk I/O */
-    unsigned long hd_maxlba;		/* max physical lba allowed to write on this volume */
-    unsigned long maxlba;		/* max (relative) lba for this volume (logical limit) */
-    unsigned long hb_range;		/* range for home blocks */
+    uint32_t hd_offset;		/* amount to add before doing any physical disk I/O */
+    uint32_t hd_maxlba;		/* max physical lba allowed to write on this volume */
+    uint32_t maxlba;		/* max (relative) lba for this volume (logical limit) */
+    uint32_t hb_range;		/* range for home blocks */
     volatile int files_indx;		/* current 'files' index (tmp used by mount) */
     int rw_amt;				/* amt to r/w (tmp used by mount) */
-    unsigned long *contents;		/* pointer to where to read/write (tmp used by mount) */
-    unsigned long *buff;		/* pointer to non-cached sector buffer (tmp used by mount) */
+    uint32_t *contents;		/* pointer to where to read/write (tmp used by mount) */
+    uint32_t *buff;		/* pointer to non-cached sector buffer (tmp used by mount) */
     int buff_size;			/* size of buffer in bytes (tmp used by mount) */
 #if FSYS_USE_BUFF_POOLS
     struct _reent *buff_pool;		/* where we obtained the mount buffer */
@@ -676,7 +677,7 @@ typedef struct fsys_volume {
     unsigned char file_buff[BYTES_PER_SECTOR+32];
     unsigned char *filep;
     QioMutex filep_mutex;
-    unsigned long index_lbas[FSYS_MAX_ALTS]; /* lbas to index.sys file headers */
+    uint32_t index_lbas[FSYS_MAX_ALTS]; /* lbas to index.sys file headers */
     FsysFilesLink *filesp;		/* pointer to list of ram fileheaders */
     volatile int files_ffree;		/* first free element in files */
     int files_elems;			/* number of elements in files */
@@ -685,8 +686,8 @@ typedef struct fsys_volume {
 #else
     FsysIndexLink *indexp;		/* pointer to index file contents */
 #endif
-    unsigned long total_free_clusters;	/* number of available clusters */
-    unsigned long total_alloc_clusters;	/* number of used clusters */
+    uint32_t total_free_clusters;	/* number of available clusters */
+    uint32_t total_alloc_clusters;	/* number of used clusters */
 #if FSYS_TIGHT_MEM
     FsysRetPtr *rp_pool;		/* ptr to preallocated pool of retrieval pointers */
     int rp_pool_size;			/* number of entries in remaining in pool */
@@ -695,16 +696,16 @@ typedef struct fsys_volume {
     FsysRetPtr *free;			/* freemap.sys file contents */
     int free_ffree;			/* first free element in freemap */
     int free_elems;			/* size of freemap in elements */
-    unsigned long *index_bits;		/* pointer to array of bits, one bit per sector in index */
+    uint32_t *index_bits;		/* pointer to array of bits, one bit per sector in index */
     int index_bits_elems;		/* number of elements in index_bits */
     int free_start;			/* first element in freelist that has been updated */
-    unsigned long *unused;		/* ptr to list of unused (deleted) fid's */
+    uint32_t *unused;		/* ptr to list of unused (deleted) fid's */
     int unused_ffree;			/* first free element in unused */
     int unused_elems;			/* number of elements in unused */
 #endif
 #if FSYS_UPD_FH
     FsysSyncT sync_work;		/* work area for sync code */
-    unsigned long *dirty;		/* list of FID's to update */
+    uint32_t *dirty;		/* list of FID's to update */
     volatile int dirty_ffree;		/* first free entry in dirty */
     int dirty_elems;			/* number of entries in dirty */
 #endif
@@ -714,10 +715,10 @@ typedef struct fsys_volume {
     int freem_indx;			/* next available item in freemem (tmp used by mount) */
 #endif
 #if defined(FSYS_INCLUDE_BOOT_MARKERS) && FSYS_INCLUDE_BOOT_MARKERS
-    unsigned long boot_lbas[4][FSYS_MAX_ALTS]; /* lbas to index.sys file headers */
+    uint32_t boot_lbas[4][FSYS_MAX_ALTS]; /* lbas to index.sys file headers */
 #endif
 #if (FSYS_OPTIONS&FSYS_FEATURES_JOURNAL)
-    unsigned long journ_lbas[FSYS_MAX_ALTS];
+    uint32_t journ_lbas[FSYS_MAX_ALTS];
     FsysRamFH *journ_rfh;
     FsysFilesLink *limbo;		/* retrieval ptrs that need to be put back on the freelist */
     U32 journ_sect;			/* next sector in journal for r/w */
@@ -738,8 +739,8 @@ typedef struct fsys_initv {
     int free_sectors;		/* number of sectors for initial freemap file allocation */
     int root_sectors;		/* number of sectors for initial root directory allocation */
     int def_extend;		/* number of sectors to extend files by default */
-    unsigned long max_lba;	/* number of LBA's to allocate for this volume */
-    unsigned long hb_range;	/* range of sectors for home block */
+    uint32_t max_lba;	/* number of LBA's to allocate for this volume */
+    uint32_t hb_range;	/* range of sectors for home block */
 #if (FSYS_FEATURES&FSYS_FEATURES_JOURNAL)
     int journal_sectors;	/* number of sectors for initial journal file allocation */
 #endif
@@ -747,20 +748,20 @@ typedef struct fsys_initv {
 
 typedef struct fsys_opent {
     QioOpenSpc spc;		/* This must be first (note: not a pointer) */
-    int fid;			/* FID of file to open (set to FID of open'ed file) */
-    int parent;			/* FID of parent */
+    uint32_t fid;			/* FID of file to open (set to FID of open'ed file) */
+    uint32_t parent;		/* FID of parent */
     off_t alloc;		/* file allocation size in bytes */
     off_t eof;			/* position of eof marker in bytes */
-    int placement;		/* which area of disk to place file */
+    uint32_t placement;		/* which area of disk to place file */
     int copies;			/* number of copies of file to make */
     int def_extend;		/* amount to extend file by default */
     int mkdir;			/* .ne. if to create a directory */
-    unsigned long ctime;	/* time to assign for creation */
-    unsigned long mtime;	/* time to assign for modification */
-    unsigned long btime;	/* time to assign for backup */
-    unsigned long atime;	/* time to assign for access */
-    unsigned long hd_offset;	/* starting sector for filesystem */
-    unsigned long hd_maxlba;	/* ending sector +1 for filesystem */
+    uint32_t ctime;	/* time to assign for creation */
+    uint32_t mtime;	/* time to assign for modification */
+    uint32_t btime;	/* time to assign for backup */
+    uint32_t atime;	/* time to assign for access */
+    uint32_t hd_offset;	/* starting sector for filesystem */
+    uint32_t hd_maxlba;	/* ending sector +1 for filesystem */
 } FsysOpenT;
 
 /* Additional flags that can be set in the mode field and that reside in the */
@@ -789,7 +790,7 @@ typedef struct lookupfile_t {
 
 struct fsys_direct {
     const char *name;
-    unsigned long fid;
+    uint32_t fid;
 };
 
 typedef struct fsys_fdirent {
@@ -809,7 +810,7 @@ typedef struct fsys_dir {
 #if 0 && (!defined(_LINUX_) && !_LINUX_)
 struct direct {
     const char *name;
-    unsigned long fid;
+    uint32_t fid;
 };
 
 struct dirent {
@@ -1114,7 +1115,7 @@ extern int fsys_validate_freespace(const char *rawfn, const char *volfn,
 #define ENTRY_IN_INDEX(vol, fid) (vol->index + (fid)*FSYS_MAX_ALTS)
 #else
 #define ENTRY_IN_INDEX(vol, fid) fsys_entry_in_index(vol, fid)
-extern unsigned long *fsys_entry_in_index(FsysVolume *vol, int fid);
+extern uint32_t *fsys_entry_in_index(FsysVolume *vol, uint32_t fid);
 #endif
 
 /*********************************************************************
@@ -1127,7 +1128,7 @@ extern unsigned long *fsys_entry_in_index(FsysVolume *vol, int fid);
  * At exit:
  *	returns pointer to FsysRamFH if id in range, else returns 0.
  */
-extern FsysRamFH *fsys_find_ramfh(FsysVolume *_vol, int _id);
+extern FsysRamFH *fsys_find_ramfh(FsysVolume *_vol, uint32_t _id);
 
 /*********************************************************************
  * fsys_find_id - find index of file given the FsysRamFH pointer

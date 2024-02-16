@@ -36,7 +36,8 @@ _CONSTANTS_MAC_ == 0
 	HEX_CONST MIPS7000	0x3C		< MIPS 7000 processor, big endian >
 	HEX_CONST MIPS7000L	0x3D		< MIPS 7000 processor, little endian >
 	HEX_CONST CX486		0x41		< Cyrix 486/pentium >
-    HEX_CONST I86x32    0x42        < Plain 32 bit i86 platform >
+	HEX_CONST I86x32	0x42		< Plain 32 bit i86 platform >
+	HEX_CONST I86x64	0x43		< Plain 64 bit i86 platform >
 ;
 ; Various host boards (set the variable HOST_BOARD to one of these)
 ;
@@ -62,7 +63,7 @@ _CONSTANTS_MAC_ == 0
 	HEX_CONST SAN_FRANCISCO 12*0x10+7	< WMS San Francisco board (defunct) >
 	HEX_CONST ATLANTIS	12*0x10+8	< WMS Atlantis board (MIPS/ZEUS) >
 	HEX_CONST CYRIX_MGX	13*0x10+0	< Cyrix Media/GX >
-    HEX_CONST I86_PC    14*0x10+0   < Plain i86 PC >
+	HEX_CONST I86_PC	14*0x10+0	< Plain i86 PC >
 ;
 ; Various video boards (set the variable VIDEO_BOARD to one of these)
 ;
@@ -82,15 +83,15 @@ _CONSTANTS_MAC_ == 0
 ;
 ; Varios Sound/IO Boards (set the variable SIO_BOARD to one of these)
 ;
-        HEX_CONST DCS_SIO	1		< Williams SIO Board >
-        HEX_CONST DCS_DSIO	2		< Atari Deluxe SIO Board - with FIFOS >
-        HEX_CONST DCS_DSIOI	3		< Atari Deluxe SIO Board - w/o FIFOS >
-        HEX_CONST DCS_DSIOR	4		< Atari Deluxe SIO Board - DCS RUSH Stereo Sound OS >
-        HEX_CONST ADCS_DSIO     5               < A.D.C.S. DSP O/S (Stereo) and Atari Deluxe SIO Board >
-        HEX_CONST ADCS_DSIOM    6               < A.D.C.S. DSP O/S (Mono) and Atari Deluxe SIO Board >
-        HEX_CONST ADAGE_WSIO6	7		< A.D.A.G.E. DSP O/S and  Williams SIO Board w/6-channel Sound >
+       HEX_CONST DCS_SIO	1		< Williams SIO Board >
+       HEX_CONST DCS_DSIO	2		< Atari Deluxe SIO Board - with FIFOS >
+       HEX_CONST DCS_DSIOI	3		< Atari Deluxe SIO Board - w/o FIFOS >
+       HEX_CONST DCS_DSIOR	4		< Atari Deluxe SIO Board - DCS RUSH Stereo Sound OS >
+       HEX_CONST ADCS_DSIO     5               < A.D.C.S. DSP O/S (Stereo) and Atari Deluxe SIO Board >
+       HEX_CONST ADCS_DSIOM    6               < A.D.C.S. DSP O/S (Mono) and Atari Deluxe SIO Board >
+       HEX_CONST ADAGE_WSIO6	7		< A.D.A.G.E. DSP O/S and  Williams SIO Board w/6-channel Sound >
 	HEX_CONST ADCS_ATLANTIS	8		< A.D.C.S. DSP O/S (Stereo) for Atlantis >
-        HEX_CONST ADAGE_DSIO6   9               < A.D.A.G.E. DSP O/S and Atari Deluxe SIO w/6-channel Sound >
+       HEX_CONST ADAGE_DSIO6   9               < A.D.A.G.E. DSP O/S and Atari Deluxe SIO w/6-channel Sound >
 ;
 ; Various game id's (set the variable COJAG_GAME to one of these)
 ;

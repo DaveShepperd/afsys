@@ -1,20 +1,25 @@
 /* See LICENSE.txt for license details */
 
-#include <config.h>
-#include <os_proto.h>
-#include <st_proto.h>
+#include "config.h"
+
+#if 0	/* These are called by lindefs.h which is included in config.h */
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <linux/unistd.h>
-#include <fcntl.h>
 #include <errno.h>
-#include <qio.h>
-#include <fsys.h>
-#include <any_proto.h>
 #include <sys/stat.h>
 #include <ctype.h>
+
+#include "os_proto.h"
+#include "st_proto.h"
+#include "any_proto.h"
+#include "qio.h"
+#include "fsys.h"
 
 #if HOST_BOARD_CLASS && ((HOST_BOARD & HOST_BOARD_CLASS) == I86_PC) && NUM_HDRIVES != 1
 #error Cannot have \NUM_HDRIVES set to anything other than 1
@@ -60,6 +65,9 @@ typedef struct pinfo
 #else
     #define FS_DEBUG(x) do { ; } while (0)
 #endif
+
+/* Have no idea why this is required. gcc refuses to accept the prototype in stdio.h */
+extern int snprintf(char *buf, int size, const char *fmt, ...);
 
 #if 1
     #define RPT_ERR(x...) \
@@ -220,10 +228,10 @@ static void ide_task(QioIOQ *ioq)
                 break;
             case IDE_OPEN: {
                     FsysOpenT *ot = (FsysOpenT *)fp->private;
+					int32_t ssts;
                     if (ot)
                     {
                         struct stat64 st;
-                        int ssts;
                         ssts = fstat64(info->fd, &st);
                         if (ssts >= 0)
                         {
@@ -243,7 +251,7 @@ static void ide_task(QioIOQ *ioq)
                     }
                     ioq->iostatus = FSYS_IO_SUCC|SEVERITY_INFO;
                     ioq->iocount = ioq->file;
-                    fp->private = (void *)sts;
+                    fp->private = qio_cvtToPtr(sts);
                     fp->sect = 0;
                     fp->bws = 0;
                     fp->size = 0;
@@ -292,7 +300,7 @@ static int  que_it(QioIOQ *ioq)
     return qio_getmutex(&info->mutex, ide_task, ioq);
 }
 
-static int  ide_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
+static int  ide_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len)
 {
     ioq->pparam0 = buf;
     ioq->iparam0 = len;
@@ -301,7 +309,7 @@ static int  ide_readwpos(QioIOQ *ioq, off_t where, void *buf, long len)
     return que_it(ioq);
 }
 
-static int  ide_read(QioIOQ *ioq, void *buf, long len)
+static int  ide_read(QioIOQ *ioq, void *buf, int32_t len)
 {
     ioq->pparam0 = buf;
     ioq->iparam0 = len;
@@ -309,7 +317,7 @@ static int  ide_read(QioIOQ *ioq, void *buf, long len)
     return que_it(ioq);
 }
 
-static int  ide_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
+static int  ide_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len)
 {
     ioq->pparam0 = (void *)buf;
     ioq->iparam0 = len;
@@ -318,7 +326,7 @@ static int  ide_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len)
     return que_it(ioq);
 }
 
-static int  ide_write(QioIOQ *ioq, const void *buf, long len)
+static int  ide_write(QioIOQ *ioq, const void *buf, int32_t len)
 {
     ioq->pparam0 = (void *)buf;
     ioq->iparam0 = len;
@@ -501,7 +509,7 @@ static void computeRawDiskSize(Pinfo *info)
         {
             char name[128];
             int major, minor, qty;
-            long long kilobytes;
+            S64 kilobytes;
             qty = sscanf(buff,"%d %d %lld %s", &major, &minor, &kilobytes, name);
             if ( qty == 4 && !strcmp(dvcName,name) )
             {
@@ -562,7 +570,7 @@ static int find_part(Pinfo *info)
         {
             memcpy(lp, bp->parts + sts, sizeof(Partition));
             if (debug_level)
-                printf("Partition table entry %d: type %02X sects: 0x%08lX-0x%08lX\n",sts, lp->type, lp->abs_sect, lp->num_sects ? lp->abs_sect+lp->num_sects-1 : lp->abs_sect );
+                printf("Partition table entry %d: type %02X sects: 0x%08X-0x%08X\n",sts, lp->type, lp->abs_sect, lp->num_sects ? lp->abs_sect+lp->num_sects-1 : lp->abs_sect );
             if (lp->status == 0x80 && lp->type == 0x8f)   /* partition bootable and one of ours? */
             {
                 if ( S_ISREG(st.st_mode) )
@@ -578,7 +586,7 @@ static int find_part(Pinfo *info)
                     info->base_sect = lp->abs_sect;
                     info->num_sects = lp->num_sects;
                     if (debug_level)
-                        printf("Opened fake partition %s for r/w on fd %d; sectors 0x%08lX-0x%08lX\n",
+                        printf("Opened fake partition %s for r/w on fd %d; sectors 0x%08X-0x%08X\n",
                                             info->part_name, info->fd, lp->abs_sect, lp->abs_sect+lp->num_sects-1);
                     return 0;
                 }
@@ -593,7 +601,7 @@ static int find_part(Pinfo *info)
                 info->base_sect = lp->abs_sect;
                 info->num_sects = lp->num_sects;
                 if (debug_level)
-                    printf("Opened %s for r/w on fd %d; sectors 0x%08lX-0x%08lX\n",
+                    printf("Opened %s for r/w on fd %d; sectors 0x%08X-0x%08X\n",
                                         info->part_name, info->fd, lp->abs_sect, lp->abs_sect+lp->num_sects-1);
                 return 0;
             }
@@ -624,10 +632,11 @@ static int find_part(Pinfo *info)
     }
     if (debug_level)
     {
-        printf("Opened whole file %s for r/w on fd %d; sectors 0x00000000-0x%08lX (num_sects=0x%08lX)\n",
+		S64 ssize = st.st_size, sblks=st.st_blocks;
+        printf("Opened whole file %s for r/w on fd %d; sectors 0x00000000-0x%08X (num_sects=0x%08X)\n",
                             info->part_name, info->fd, info->num_sects-1, info->num_sects);
         printf("     S_ISBLK=%s, st_mode=0x%06X, st_size=0x%08llX, st_blksize=%ld, st_blocks=%lld\n",
-               S_ISBLK(st.st_mode) ? "yes" : "no", st.st_mode, st.st_size, st.st_blksize, st.st_blocks );
+               S_ISBLK(st.st_mode) ? "yes" : "no", st.st_mode, ssize, st.st_blksize, sblks );
     }
     return 0;
 }

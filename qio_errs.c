@@ -1,14 +1,14 @@
 /* See LICENSE.txt for license details */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE (1)
+#endif
+
 #include <config.h>
 #include <os_proto.h>
 #include <string.h>
 #include <qio.h>
-#if HOST_BOARD
-# include <nsprintf.h>
-#else
 # include <stdio.h>
-#endif
 
 #ifndef n_elts
 # define n_elts(x) (sizeof(x)/sizeof(x[0]))
@@ -67,7 +67,7 @@ int qio_errmsg(int sts, char *ans, int size) {
 	    if (fac == 0) {
 		s = strerror(sts);
 		if (s && strlen(s) > 0) {
-		    return nsprintf(ans, size, "STDIO error, %s", s);
+		    return snprintf(ans, size, "STDIO error, %s", s);
 		}
 	    }
 	    strcpy(ans, "???");
@@ -90,13 +90,7 @@ int qio_errmsg(int sts, char *ans, int size) {
 		    }
 		}
 	    }
-#if HOST_BOARD
-	    nsprintf(s, size, "Unknown status of 0x%08X", sts);
-#else
-	    sprintf(tmp, "Unknown status of %08X", sts);
-	    strncpy(s, tmp, size-1);
-	    s[size-1] = 0;
-#endif
+	    snprintf(s, size, "Unknown status of 0x%08X", sts);
 	}
     }
     return ans ? strlen(ans) : 0;

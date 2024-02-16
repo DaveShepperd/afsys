@@ -1,25 +1,30 @@
 /* See LICENSE.txt for license details */
-#include <config.h>
-#include <os_proto.h>
-#include <any_proto.h>
-#include <nsprintf.h>
-#include <st_proto.h>
+
+#include "config.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <fcntl.h>
+
+#include "os_proto.h"
+#include "any_proto.h"
+#include "nsprintf.h"
+#include "st_proto.h"
 #define QIO_LOCAL_DEFINES 1
-#include <qio.h>
-#include <fsys.h>
+#include "qio.h"
+#include "fsys.h"
 #if FSYS_USE_BUFF_POOLS || !FSYS_USE_MALLOC
-    #include <mallocr.h>
+    #include "mallocr.h"
 #endif
 #define BYTPSECT BYTES_PER_SECTOR
 #if !__linux__
-    #include <eer_defs.h>
+    #include "eer_defs.h"
 #endif
-#include <sys/types.h>
-#include <stdio.h>
-#include <string.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <fcntl.h>
 
 #ifndef QIO_FIN_SHIM
     #define QIO_FIN_SHIM() do { ; } while (0)
@@ -183,6 +188,9 @@ IcelessIO *fsys_iop;
 #if !defined(FSYS_NO_SEARCH_HBLOCK)
     #define FSYS_NO_SEARCH_HBLOCK 1		/* default to no homeblock search */
 #endif
+#if _LINUX_
+extern void sync(void);
+#endif
 
 typedef struct opnfile_t
 {
@@ -201,7 +209,7 @@ FsysVolume volumes[FSYS_MAX_VOLUMES];
 #endif
 
 static FsysQio *fsysqio_pool_head;
-static int fsysqio_pool_batch;
+static int32_t fsysqio_pool_batch;
 
 #if FSYS_UMOUNT
     #if MALLOC_DEBUG
@@ -262,7 +270,7 @@ FsysQio *fsys_getqio(void)
             }
             else
             {
-                fsysqio_pool_batch = (int)st->value;
+                fsysqio_pool_batch = qio_cvtFromPtr(st->value);
             }
         }
         else
@@ -328,8 +336,8 @@ static FsysVolume *fsys_get_volume(int which)
 
 typedef struct fsys_ltop
 {
-    unsigned long phys;         /* physical LBA */
-    unsigned long cnt;          /* max number of sectors */
+    uint32_t phys;         /* physical LBA */
+    uint32_t cnt;          /* max number of sectors */
 } FsysLtop;
 
 /************************************************************
@@ -348,11 +356,11 @@ typedef struct fsys_ltop
  *	out of bounds.
  */
 
-static FsysLtop fsys_ltop(FsysRamRP *ramp, unsigned long sector, int count)
+static FsysLtop fsys_ltop(FsysRamRP *ramp, uint32_t sector, int count)
 {
     FsysLtop ans;
     FsysRetPtr *ptrs;
-    unsigned long lba, lbacnt;
+    uint32_t lba, lbacnt;
     int nptrs;
 
     ans.phys = 0;       /* assume no conversion is possible */
@@ -388,7 +396,7 @@ static FsysLtop fsys_ltop(FsysRamRP *ramp, unsigned long sector, int count)
         nptrs = ramp->num_rptrs;
         for (;nptrs; --nptrs, ++ptrs)
         {
-            unsigned long diff;
+            uint32_t diff;
 #if (FSYS_OPTIONS&FSYS_FEATURES&FSYS_FEATURES_SKIP_REPEAT)
             /* save doing an integer multiply if not required */
             if (ptrs->repeat == 1 || ptrs->nblock == 1)
@@ -421,7 +429,7 @@ static FsysLtop fsys_ltop(FsysRamRP *ramp, unsigned long sector, int count)
                 }
                 else
                 {
-                    unsigned long t;
+                    uint32_t t;
                     t = diff/ptrs->nblocks;     /* otherwise, it gets very complicated */
                     t *= ptrs->nblocks+ptrs->skip;
                     ans.phys = ptrs->start + t;
@@ -453,7 +461,7 @@ static FsysLtop fsys_ltop(FsysRamRP *ramp, unsigned long sector, int count)
     return ans;
 }
 
-FsysRamFH *fsys_find_ramfh(FsysVolume *vol, int id)
+FsysRamFH *fsys_find_ramfh(FsysVolume *vol, uint32_t id)
 {
     FsysRamFH *rfh = 0;
     FsysFilesLink *fl;
@@ -570,7 +578,7 @@ static int fsys_findfree( FsysFindFreeT *ft )
 {
     int ii;
     int nearest_over, nearest_under;
-    long diff_over, diff_under;
+    int32_t diff_over, diff_under;
     FsysRetPtr *fp, *free;
 
 #if (FSYS_OPTIONS&FSYS_FEATURES&FSYS_FEATURES_SKIP_REPEAT)
@@ -614,11 +622,11 @@ static int fsys_findfree( FsysFindFreeT *ft )
 #endif
 
     nearest_over = nearest_under = -1;
-    diff_over = LONG_MAX;
-    diff_under = LONG_MIN;
+    diff_over = S32_MAX;
+    diff_under = S32_MIN;
     for (ii=0; ii < ft->actelts; ++ii, ++fp) /* look through the list for one that fits */
     {
-        long d;
+        uint32_t d;
         int size;
         size = fp->nblocks;
         if (!size) continue;        /* empty entry */
@@ -1053,7 +1061,8 @@ static void fsys_qread(QioIOQ *ioq)
 #if !FSYS_READ_ONLY
 static int wr_ext_file(FsysQio *arg, QioFile *fp, FsysVolume *v)
 {
-    int ii, jj, fid, def;
+    int ii, jj, def;
+	uint32_t fid;
     QioIOQ *ioq;
     FsysRamFH *rfh;
     FsysRamRP *rp;
@@ -1067,7 +1076,7 @@ static int wr_ext_file(FsysQio *arg, QioFile *fp, FsysVolume *v)
                       v->flags));
             return 2;
         }
-        fid = (int)fp->private;
+        fid = qio_cvtFromPtr(fp->private);
         rfh = fsys_find_ramfh(v, (fid&FSYS_DIR_FIDMASK));
         if (rfh)
         {
@@ -1106,7 +1115,7 @@ static int wr_ext_file(FsysQio *arg, QioFile *fp, FsysVolume *v)
 #if FSYS_SQUAWKING
                 char emsg[132];
                 qio_errmsg(ioq->iostatus, emsg, sizeof(emsg));
-                FSYS_SQK((OUTWHERE "wr_ext_file: error 1 extending. def=%d, jj=%d, total_free=%ld. sts:\n%s\n",
+                FSYS_SQK((OUTWHERE "wr_ext_file: error 1 extending. def=%d, jj=%d, total_free=%d. sts:\n%s\n",
                           def, jj, v->total_free_clusters, emsg));
 #endif
                 return 1;
@@ -1559,7 +1568,7 @@ static int lookup_filename(FsysLookUpFileT *lu)
 static int add_to_unused(FsysVolume *vol, int fid)
 {
     int ii;
-    unsigned long *ulp;
+    U32 *ulp;
 
     ulp = vol->unused;
     for (ii=0; ii < vol->unused_ffree; ++ii)
@@ -1572,7 +1581,7 @@ static int add_to_unused(FsysVolume *vol, int fid)
 #define FSYS_UNUSED_INCREMENT (128)
 #endif
         vol->unused_elems += FSYS_UNUSED_INCREMENT; /* room for n updates */
-        ulp = (U32*)QMOUNT_REALLOC(vol, vol->unused, vol->unused_elems*sizeof(long));
+        ulp = (U32*)QMOUNT_REALLOC(vol, vol->unused, vol->unused_elems*sizeof(uint32_t));
         if (!ulp)
         {
             return FSYS_CREATE_NOMEM;
@@ -1592,7 +1601,7 @@ static int fatal_dirty_error;
 SPC_STATIC int add_to_dirty(FsysVolume *vol, U32 fid, int end)
 {
     int ii;
-    unsigned long *ulp;
+    uint32_t *ulp;
 
     FSYS_SQK(( OUTWHERE "%6ld: Adding fid %08lX to dirty list\n", eer_rtc, fid));
     if (fid >= vol->files_ffree || (vol->flags&FSYS_VOL_FLG_RO))
@@ -1611,7 +1620,7 @@ SPC_STATIC int add_to_dirty(FsysVolume *vol, U32 fid, int end)
                        eer_rtc, fid));
             if (end && ii < vol->dirty_ffree-1)
             {
-                memcpy(ulp-1, ulp, (vol->dirty_ffree-ii-1)*sizeof(unsigned long)); /* scoot everybody down one */
+                memcpy(ulp-1, ulp, (vol->dirty_ffree-ii-1)*sizeof(uint32_t)); /* scoot everybody down one */
                 vol->dirty[vol->dirty_ffree-1] = fid;   /* put this one at the end */
             }
             return 0;       /* already in the dirty list or already at the end */
@@ -1621,13 +1630,13 @@ SPC_STATIC int add_to_dirty(FsysVolume *vol, U32 fid, int end)
     {
         int new;
         new = vol->dirty_elems + 32;
-        ulp = (U32*)QMOUNT_REALLOC(vol, vol->dirty, new*sizeof(long));
+        ulp = (U32*)QMOUNT_REALLOC(vol, vol->dirty, new*sizeof(int32_t));
         if (!ulp)
         {
             return FSYS_CREATE_NOMEM;
         }
         vol->dirty = ulp;
-        memset((char *)(vol->dirty+vol->dirty_elems), 0, 32*sizeof(long));
+        memset((char *)(vol->dirty+vol->dirty_elems), 0, 32*sizeof(int32_t));
         vol->dirty_elems = new;         /* room for 32 updates */
         FSYS_SQK(( OUTWHERE "%6ld: Increased size of dirty area\n", eer_rtc));
     }
@@ -1688,8 +1697,8 @@ static int upd_index_bits(FsysVolume *vol, U32 fid)
     U32 lw, le, bits;
     U32 *ulp;
 
-    bits = ((vol->files_ffree+1)*FSYS_MAX_ALTS*sizeof(long)+(BYTPSECT-1))/BYTPSECT; /* number of sectors required to hold index file */
-    bits = (bits+31)/32;            /* number of longs rqd to hold bit map */
+    bits = ((vol->files_ffree+1)*FSYS_MAX_ALTS*sizeof(int32_t)+(BYTPSECT-1))/BYTPSECT; /* number of sectors required to hold index file */
+    bits = (bits+31)/32;            /* number of int32_t rqd to hold bit map */
     FSYS_SQK(( OUTWHERE "%6ld: upd_index_bits: fid=%08lX, Bits=%ld, elems=%d\n",
                eer_rtc, fid, bits, vol->index_bits_elems));
     if (bits >= vol->index_bits_elems)
@@ -1697,7 +1706,7 @@ static int upd_index_bits(FsysVolume *vol, U32 fid)
         int newsize, len;
         newsize = vol->index_bits_elems + bits + 8;
         FSYS_SQK(( OUTWHERE "%6ld: upd_index_bits: Increasing size. newsize=%d\n", eer_rtc, newsize));
-        ulp = (U32*)QMOUNT_REALLOC(vol, vol->index_bits, newsize*sizeof(long));
+        ulp = (U32*)QMOUNT_REALLOC(vol, vol->index_bits, newsize*sizeof(int32_t));
         if (!ulp)
         {
             return FSYS_FREE_NOMEM;
@@ -1707,8 +1716,8 @@ static int upd_index_bits(FsysVolume *vol, U32 fid)
         vol->index_bits = ulp;
         vol->index_bits_elems = newsize;
     }
-    lw = fid*FSYS_MAX_ALTS*sizeof(long); /* byte position in index file of first byte */
-    le = lw + FSYS_MAX_ALTS*sizeof(long)-1; /* byte position of last byte in array */
+    lw = fid*FSYS_MAX_ALTS*sizeof(int32_t); /* byte position in index file of first byte */
+    le = lw + FSYS_MAX_ALTS*sizeof(int32_t)-1; /* byte position of last byte in array */
     lw /= BYTPSECT;             /* sector position in index file of first byte */
     fid = lw&31;            /* bit position in bitmap element of first byte */
     lw /= 32;               /* longword element in bitmap of first byte */
@@ -1763,7 +1772,7 @@ static int collapse_free(FsysVolume *vol, int low, int sqk)   /* squeeze all the
     lim = dst + vol->free_ffree;    /* point to end of list */
     while (src < lim)         /* walk the whole list */
     {
-        unsigned long s, ss, ds, de;
+        uint32_t s, ss, ds, de;
         s = src->start;
         ss = src->nblocks;
         ds = dst->start;
@@ -2033,7 +2042,7 @@ static FsysFilesLink *rps_to_limbo(FsysVolume *vol, FsysRamRP *rps, int xtra)
 }
     #endif
 
-U32 *fsys_entry_in_index(FsysVolume *vol, int fid)
+U32 *fsys_entry_in_index(FsysVolume *vol, uint32_t fid)
 {
     FsysIndexLink *ip = vol->indexp;
     int accum=0;
@@ -2054,7 +2063,7 @@ U32 *fsys_entry_in_index(FsysVolume *vol, int fid)
 static int get_fh(FsysVolume *vol)
 {
     int fid, gen, ii;
-    unsigned long *ulp;
+    uint32_t *ulp;
     FsysRamFH *rfh;
 
     fid = 0;                    /* assume failure */
@@ -2125,7 +2134,7 @@ static int get_fh(FsysVolume *vol)
         }
         fid = vol->files_ffree++;
         nf = fsys_find_ramfh(vol, FSYS_INDEX_INDEX);    /* point to index file header */
-        nf->size += sizeof(long)*FSYS_MAX_ALTS; /* increment index file size */
+        nf->size += sizeof(int32_t)*FSYS_MAX_ALTS; /* increment index file size */
         if (nf->size > nf->clusters*BYTPSECT) /* if file has grown out of its britches */
         {
             FsysRamRP *rp;
@@ -2163,7 +2172,7 @@ static int get_fh(FsysVolume *vol)
 
 static int blast_fid_from_index(FsysVolume *vol, FsysRamFH *rfh)
 {
-    unsigned long *ndx;
+    uint32_t *ndx;
     int ii, sts;
     U32 fid;
 
@@ -2648,7 +2657,7 @@ static void fcreate_q(QioIOQ *ioq)
         rfh->valid = 1;             /* mark entry as valid and useable */
         ioq->iostatus = FSYS_CREATE_SUCC|SEVERITY_INFO; /* assume success */
         dtls->fid = (rfh->generation<<FSYS_DIR_GENSHF) | fsys_find_id(vol, rfh);
-        file->private = (void *)dtls->fid;
+        file->private = qio_cvtToPtr(dtls->fid);
         dtls->parent = (luf.owner->generation<<FSYS_DIR_GENSHF) | fsys_find_id(vol, luf.owner);
         while (dtls->mkdir)           /* are we to make it into a directory? */
         {
@@ -2879,7 +2888,7 @@ static void fopen_q(QioIOQ *ioq)
             dtls->atime = rfh->atime;
             dtls->btime = rfh->btime;
 #endif
-            file->private = (void*)dtls->fid;   /* remember FID of open file for ourself */
+            file->private = qio_cvtToPtr(dtls->fid);   /* remember FID of open file for ourself */
             ioq->iostatus = FSYS_IO_SUCC|SEVERITY_INFO;
             break;
         } while (0);
@@ -3113,11 +3122,11 @@ static int fsys_mkdir( QioIOQ *ioq, const char *name, int mode )
 
 static int mk_ramdir(FsysVolume *vol)
 {
-    unsigned char *s, *lim, gen;
-    unsigned long fid;
+    uint8_t *s, *lim, gen;
+    uint32_t fid;
     int qty, len, totstr;
     FsysDirEnt *inddir, **dir;      /* pointer to list of directory ents */
-    unsigned char *strings;     /* pointer to place to put strings */
+    uint8_t *strings;     /* pointer to place to put strings */
     FsysRamFH *rfh;
 
     rfh = fsys_find_ramfh(vol, vol->files_indx);
@@ -3472,13 +3481,13 @@ static int get_sync_buffers(FsysVolume *vol, FsysSyncT *syn)
     syn->buffer_size = (syn->buffer_size + FSYS_SYNC_BUFFSIZE + (BYTPSECT-1)) & -BYTPSECT;
     SYNSQK((OUTWHERE "%6ld: get_sync_buffers: Increasing buffer size from %d to %d\n",
             eer_rtc, old_size, syn->buffer_size));
-    syn->buffers = (unsigned long *)QMOUNT_ALLOC(vol, syn->buffer_size+QIO_CACHE_LINE_SIZE);
+    syn->buffers = (uint32_t *)QMOUNT_ALLOC(vol, syn->buffer_size+QIO_CACHE_LINE_SIZE);
     if (!syn->buffers)
     {
         SYNSQK((OUTWHERE "        Ran out of memory\n"));
         return(syn->status = FSYS_SYNC_NOMEM);
     }
-    syn->output = (unsigned long *)QIO_ALIGN(syn->buffers, QIO_CACHE_LINE_SIZE);
+    syn->output = (uint32_t *)QIO_ALIGN(syn->buffers, QIO_CACHE_LINE_SIZE);
     memcpy(syn->output, old_ptr, old_size);
     QMOUNT_FREE(vol, old_head);
     syn->our_ioq.vol = vol;
@@ -3642,7 +3651,7 @@ static int sync_directory(FsysSyncT *syn, FsysRamRP *ramrp, U32 sector)
         {
             return syn->status = FSYS_SYNC_NOMEM;
         }
-        syn->output = (unsigned long *)QIO_ALIGN(syn->buffers, QIO_CACHE_LINE_SIZE);
+        syn->output = (uint32_t *)QIO_ALIGN(syn->buffers, QIO_CACHE_LINE_SIZE);
         syn->buffer_size = news;
     }
 
@@ -4469,7 +4478,7 @@ static void fsys_jou_q(QioIOQ *ioq)
             }
         case JSYNC_DONE:
 #if _LINUX_
-            sync(); /* make sure all data is written to disk */
+			sync(); /* make sure all data is written to disk */
 #endif
             break;
         }       /* -- switch sync->state */
@@ -4818,7 +4827,7 @@ static void fsys_sync_q(QioIOQ *ioq)
 #endif
         case SYNC_DONE:
 #if !FSYS_READ_ONLY
-            if (vol->index_bits) memset((char *)vol->index_bits, 0, vol->index_bits_elems*sizeof(long));
+            if (vol->index_bits) memset((char *)vol->index_bits, 0, vol->index_bits_elems*sizeof(int32_t));
             vol->free_start = INT_MAX;
 #endif
             vol->dirty_ffree = 0;
@@ -5573,7 +5582,7 @@ static void fsys_qmount(QioIOQ *ioq)
     FsysVolume *vol;
 /*    QioFile *hdfile; */
     int ii, sts;
-    unsigned long *ulp;
+    uint32_t *ulp;
 
     vol = (FsysVolume *)ioq;
     qio = (FsysQio *)ioq;
@@ -5696,7 +5705,7 @@ static void fsys_qmount(QioIOQ *ioq)
             return;             /* wait for I/O to complete */
 
         case MOUNT_CK_HOME: {
-                unsigned long cs;
+                uint32_t cs;
                 hb = (FsysHomeBlock *)vol->buff;
                 ulp = vol->buff;
                 for (cs=0, ii=0; ii < 128; ++ii) cs += *ulp++; /* checksum the home block */
@@ -5855,7 +5864,7 @@ static void fsys_qmount(QioIOQ *ioq)
  */
         case MOUNT_RD_FH: {
                 int bad;
-                unsigned long sect;
+                uint32_t sect;
 
                 if (vol->files_indx == FSYS_INDEX_INDEX)  /* reading index file header */
                 {
@@ -5874,7 +5883,7 @@ static void fsys_qmount(QioIOQ *ioq)
                 }
                 if (!vol->substate)           /* on the first pass of a file header read */
                 {
-                    unsigned long *p;
+                    uint32_t *p;
                     bad = 0;
                     p = ulp;
                     for (ii=0; ii < FSYS_MAX_ALTS; ++ii, ++p) /* check to see if any of them are bad */
@@ -5940,7 +5949,7 @@ static void fsys_qmount(QioIOQ *ioq)
             }
 
         case MOUNT_PROC_FH: {       /* process the file header */
-                unsigned long id;
+                uint32_t id;
 #if !FSYS_READ_ONLY
                 int jj;
 #endif
@@ -5955,7 +5964,7 @@ static void fsys_qmount(QioIOQ *ioq)
                 if (vol->substate > 1) USED_ALT();
                 if (vol->files_indx == FSYS_INDEX_INDEX) /* index file is done first */
                 {
-                    ii = hdr->size/(FSYS_MAX_ALTS*sizeof(long));
+                    ii = hdr->size/(FSYS_MAX_ALTS*sizeof(int32_t));
                     vol->files_ffree = ii;  /* point to end of active list */
 #if !FSYS_READ_ONLY
 /* Round up the allocation to the appropriate multiple of sectors (the writer needs it this way) */
@@ -5980,16 +5989,16 @@ static void fsys_qmount(QioIOQ *ioq)
                         {
                             if ((vol->index_pool = malloc_reentbyname(tn)))
                             {
-                                vol->index = _malloc_r(vol->index_pool, (ii*FSYS_MAX_ALTS*sizeof(long)+(BYTPSECT-1))&-BYTPSECT);
+                                vol->index = _malloc_r(vol->index_pool, (ii*FSYS_MAX_ALTS*sizeof(int32_t)+(BYTPSECT-1))&-BYTPSECT);
                             }
                         }
                     }               
                     if (!vol->index)
                     {
-                        vol->index_pool = malloc_from_any_pool((void **)&vol->index, (ii*FSYS_MAX_ALTS*sizeof(long)+(BYTPSECT-1))&-BYTPSECT);
+                        vol->index_pool = malloc_from_any_pool((void **)&vol->index, (ii*FSYS_MAX_ALTS*sizeof(int32_t)+(BYTPSECT-1))&-BYTPSECT);
                     }
 #else
-                    vol->index = (U32*)QMOUNT_ALLOC(vol, (ii*FSYS_MAX_ALTS*sizeof(long)+(BYTPSECT-1))&-BYTPSECT);
+                    vol->index = (U32*)QMOUNT_ALLOC(vol, (ii*FSYS_MAX_ALTS*sizeof(int32_t)+(BYTPSECT-1))&-BYTPSECT);
 #endif
                     if (!vol->index)
                     {
@@ -6026,7 +6035,7 @@ static void fsys_qmount(QioIOQ *ioq)
                         vol->status = FSYS_MOUNT_NOMEM;
                         goto clean_up;
                     }
-                    vol->contents = (unsigned long *)vol->free;
+                    vol->contents = (uint32_t *)vol->free;
 #else
                     ++vol->files_indx;
                     vol->substate = 0;
@@ -6303,7 +6312,7 @@ extern void ide_unsquawk(void);
 static void mcom1_done(QioIOQ *ioq)
 {
     QioIOQ *uioq = (QioIOQ *)ioq->user;
-    uioq->iostatus = (int)ioq->user2;
+    uioq->iostatus = qio_cvtFromPtr(ioq->user2);
     qio_freeioq(ioq);
     qio_complete(uioq);
 }
@@ -6315,15 +6324,15 @@ static void mcom1_done(QioIOQ *ioq)
 #define MCOM1_START_MOUNT	(4)
 #define MCOM1_MOUNT_DONE	(5)
 
-static void mcom1_clean(int sts, QioIOQ *fioq)
+static void mcom1_clean(int32_t sts, QioIOQ *fioq)
 {
-    int ostate;
+    int32_t ostate;
 
 #if FSYS_HAS_TQ_INS
     tq_del(&fioq->timer);       /* stop the pcnt timer */
 #endif
-    ostate = (int)fioq->user2;      /* remember what state our mcom1 procedure was in */
-    fioq->user2 = (void *)sts;      /* save final exit status */
+    ostate = qio_cvtFromPtr(fioq->user2);      /* remember what state our mcom1 procedure was in */
+    fioq->user2 = qio_cvtToPtr(sts);      /* save final exit status */
     if (QIO_ERR_CODE(sts) || ostate != MCOM1_MOUNT_DONE) /* if we got an error during qmount */
     {
         fioq->complete = mcom1_done;    /* place to go when close is complete */
@@ -6471,7 +6480,7 @@ static void hb_rdr(QioIOQ *mioq)
     FsysVolume *vol;
     FsysGSetHB *hb;
     QioIOQ *uioq;
-    int sts, max;
+    int32_t sts, max;
 
     uioq = (QioIOQ *)mioq->user;
     hb = (FsysGSetHB *)uioq->pparam0;
@@ -6480,13 +6489,13 @@ static void hb_rdr(QioIOQ *mioq)
     mioq->iostatus = 0;
     while (1)
     {
-        switch ((int)mioq->user2)
+        switch (qio_cvtFromPtr(mioq->user2))
         {
         case HBRDR_BEGIN: {
                 if (QIO_ERR_CODE(sts) && sts != FSYS_MOUNT_NOPARTS)
                 {
                     uioq->iostatus = sts;
-                    mioq->user2 = (void *)HBRDR_CLOSE;
+                    mioq->user2 = qio_cvtToPtr(HBRDR_CLOSE);
                 }
                 else
                 {
@@ -6499,7 +6508,7 @@ static void hb_rdr(QioIOQ *mioq)
                         hb->rel_lba[sts] = sector;
                         hb->abs_lba[sts] = sector + vol->hd_offset;
                     }
-                    mioq->user2 = (void *)HBRDR_READ;
+                    mioq->user2 = qio_cvtToPtr(HBRDR_READ);
                 }
                 continue;
             }
@@ -6509,14 +6518,14 @@ static void hb_rdr(QioIOQ *mioq)
                 if (sts)
                 {
                     uioq->iostatus = sts;
-                    mioq->user2 = (void *)HBRDR_CLOSE;
+                    mioq->user2 = qio_cvtToPtr(HBRDR_CLOSE);
                     continue;
                 }
                 return;
             }
         case HBRDR_PARSE: {
                 U32 *ulp, cs;
-                int next = HBRDR_CLOSE;     /* assume to close next */
+                int32_t next = HBRDR_CLOSE;     /* assume to close next */
                 ulp = (U32 *)&hb->hbu.homeblk;
                 cs = 0;
                 for (max=0; max < BYTPSECT/4; ++max) cs += *ulp++;
@@ -6531,11 +6540,11 @@ static void hb_rdr(QioIOQ *mioq)
                         next = HBRDR_READ;
                     }
                 }
-                mioq->user2 = (void *)next;
+                mioq->user2 = qio_cvtToPtr(next);
                 continue;
             }
         case HBRDR_CLOSE:
-            mioq->user2 = (void *)HBRDR_DONE;
+            mioq->user2 = qio_cvtToPtr(HBRDR_DONE);
         case HBRDR_DONE:
 #if FSYS_USE_PARTITION_TABLE
             hb->hd_offset = vol->hd_offset;
@@ -6632,7 +6641,7 @@ static void mcom1(QioIOQ *mioq)
     }
     while (1)
     {
-        switch ((int)mioq->user2)
+        switch (qio_cvtFromPtr(mioq->user2))
         {
         case MCOM1_START:
             vol->iofd = mioq->file;     /* remember the FD we're to use */
@@ -6753,7 +6762,7 @@ int fsys_mount(QioIOQ *ioq, const char *where, const char *what, U32 *tmp, int t
     FsysVolume *vol;
     const QioDevice *d;
     QioIOQ *fioq;
-    int sts;
+    int32_t sts;
 
     if (!ioq) return QIO_INVARG;    /* invalid parameter */
     if ( !where || !what || !tmp || tmpsize < sizeof(struct stat) )
@@ -6772,8 +6781,7 @@ int fsys_mount(QioIOQ *ioq, const char *where, const char *what, U32 *tmp, int t
 #endif
     fioq = qio_getioq();
     if (!fioq) return(ioq->iostatus = QIO_NOIOQ);
-    sts = (int)vol->file_buff;
-    vol->filep = (U8*)((sts+31)&-32);
+    vol->filep = QIO_ALIGN(vol->file_buff,QIO_CACHE_LINE_SIZE);	/* Align to cache line */
     fioq->private = (void *)tmp;
     ioq->private2 = vol;
     fioq->complete = mcom1;
@@ -6884,7 +6892,7 @@ int fsys_mountw(const char *where, const char *what)
 }
 
 #if !FSYS_READ_ONLY 
-static void mk_freelist(FsysRetPtr *ilist, int nelts, int size, unsigned long range)
+static void mk_freelist(FsysRetPtr *ilist, int nelts, int size, uint32_t range)
 {
     int ii;
     U32 prev;
@@ -6955,7 +6963,7 @@ static void fsys_mkheader(FsysHeader *hdr, int gen)
     memset((char *)hdr, 0, sizeof(FsysHeader));
     hdr->id = FSYS_ID_HEADER;
 #if (FSYS_FEATURES&FSYS_OPTIONS&FSYS_FEATURES_CMTIME) && defined(HAVE_TIME) && HAVE_TIME
-    hdr->ctime = hdr->mtime = (unsigned long)time(0);
+    hdr->ctime = hdr->mtime = (uint32_t)time(0);
 #endif
 #if (FSYS_FEATURES&FSYS_OPTIONS&FSYS_FEATURES_ABTIME)
     hdr->atime = hdr->ctime;
@@ -7003,14 +7011,14 @@ typedef struct
 #if (FSYS_FEATURES&FSYS_FEATURES_JOURNAL)
     FsysHeader jhdr;
     U8 blanks[BYTPSECT];
-    unsigned long jlbas[FSYS_MAX_ALTS];
+    uint32_t jlbas[FSYS_MAX_ALTS];
 #endif
     FsysRetPtr *fake_free;
     FsysRetPtr freep, tmprp;
     FsysRamRP ramrp;
-    unsigned long *dir;
-    unsigned long *index;
-    unsigned long ilbas[FSYS_MAX_ALTS];
+    uint32_t *dir;
+    uint32_t *index;
+    uint32_t ilbas[FSYS_MAX_ALTS];
     int free_nelts;
 } FsysFinit;
 
@@ -7019,7 +7027,7 @@ static void compute_home_blocks(FsysFinit *fin)
     FsysHomeBlock *hb;
     FsysInitVol *iv;
     int ii;
-    unsigned long sa, *tmp;
+    uint32_t sa, *tmp;
 
     hb = fin->hb;
     iv = &fin->iv;
@@ -7048,7 +7056,7 @@ static void compute_home_blocks(FsysFinit *fin)
     hb->cluster = FSYS_CLUSTER_SIZE;
     hb->maxalts = FSYS_MAX_ALTS;
 #if defined(HAVE_TIME) && HAVE_TIME
-    hb->atime = hb->ctime = hb->mtime = (unsigned long)time(0);
+    hb->atime = hb->ctime = hb->mtime = (uint32_t)time(0);
 #endif
     hb->btime = 0;
     hb->options = FSYS_OPTIONS;
@@ -7063,7 +7071,7 @@ static void compute_home_blocks(FsysFinit *fin)
     hb->max_lba = iv->max_lba;
     hb->hb_range = iv->hb_range;
     hb->def_extend = iv->def_extend;
-    for (tmp=(unsigned long *)hb, sa=0, ii=0; ii < BYTPSECT/4; ++ii) sa += *tmp++;
+    for (tmp=(uint32_t *)hb, sa=0, ii=0; ii < BYTPSECT/4; ++ii) sa += *tmp++;
     hb->chksum = 0-sa;
     return;
 }
@@ -7073,7 +7081,7 @@ static void init_file_system(QioIOQ *ioq)
     int ii, bcnt, sts=0;
     FsysFinit *fin;
     FsysInitVol *iv;
-    unsigned long *indxp;
+    uint32_t *indxp;
 
     fin = (FsysFinit *)ioq;
     iv = &fin->iv;
@@ -7093,14 +7101,14 @@ static void init_file_system(QioIOQ *ioq)
                     return;
                 }
                 fin->free_nelts = (iv->free_sectors*BYTPSECT)/sizeof(FsysRetPtr);
-                fin->index = (unsigned long *)QIOcalloc(iv->index_sectors*BYTPSECT, 1);     
+                fin->index = (uint32_t *)QIOcalloc(iv->index_sectors*BYTPSECT, 1);     
                 if (!fin->index)
                 {
                     QIOfree(fin->fake_free);
                     sts = FSYS_INITFS_NOMEM;
                     goto initfs_error;
                 }
-                fin->dir = (unsigned long *)QIOcalloc(iv->root_sectors*BYTPSECT, 1);
+                fin->dir = (uint32_t *)QIOcalloc(iv->root_sectors*BYTPSECT, 1);
                 if (!fin->dir)
                 {
                     QIOfree(fin->fake_free);
@@ -7138,7 +7146,7 @@ static void init_file_system(QioIOQ *ioq)
 #if (FSYS_FEATURES&FSYS_FEATURES_JOURNAL)
                 ii += (iv->journal_sectors ? 1 : 0);
 #endif
-                fin->ihdr.size = ii*FSYS_MAX_ALTS*sizeof(long);
+                fin->ihdr.size = ii*FSYS_MAX_ALTS*sizeof(int32_t);
                 fin->ihdr.id = FSYS_ID_INDEX;
                 fin->ihdr.type = FSYS_TYPE_INDEX;
                 fsys_mkheader(&fin->fhdr, 1);   /* make a freemap file header */
@@ -7658,7 +7666,7 @@ static void fsys_read_done( QioIOQ *ioq )
     QioFile *fp;
     FsysVolume *v;
     FsysRamFH *rfh;
-    int fid;
+    uint32_t fid;
     U32 npos;
 
     q = (FsysQio *)ioq;
@@ -7668,7 +7676,7 @@ static void fsys_read_done( QioIOQ *ioq )
     if (!(fp->flags & QIO_FFLAG_CANCEL))
     {
         v = (FsysVolume *)fp->dvc->private;
-        fid = (int)fp->private;
+        fid = qio_cvtFromPtr(fp->private);
         rfh = fsys_find_ramfh(v, (fid&FSYS_DIR_FIDMASK));
         if (QIO_ERR_CODE(ioq->iostatus) && ioq->iostatus != QIO_EOF && !(fp->mode&FSYS_OPNCPY_M))
         {
@@ -7686,7 +7694,7 @@ static void fsys_read_done( QioIOQ *ioq )
                     q->sector = q->o_where = nxt/BYTPSECT;
                     q->bws = q->o_bws = nxt&(BYTPSECT-1);
                     q->o_len = q->u_len = q->o_len - q->total;
-                    q->o_buff = q->buff = (void *)((U32)q->o_buff + q->total);
+                    q->o_buff = q->buff = (q->o_buff + q->total);
                     q->ramrp = rp;          /* point to new retreival pointers */
                     q->state = 0;           /* make sure we start at beginning */
                     q->total = 0;           /* start the read over at 0 */
@@ -7797,18 +7805,18 @@ static void readwpos_q(QioIOQ *ioq)
     return;
 }
 
-static int validate_read( QioIOQ *ioq, void *buf, long len)
+static int validate_read( QioIOQ *ioq, void *buf, int32_t len)
 {
     FsysQio *q;
     QioFile *fp;
     FsysVolume *v;
-    U32 fid;
+    uint32_t fid;
     FsysRamFH *rfh;
 
     if (!ioq || len < 0) return QIO_INVARG;
     fp = qio_fd2file(ioq->file);
     v = (FsysVolume *)fp->dvc->private;
-    fid = (int)fp->private;
+    fid = qio_cvtFromPtr(fp->private);
     if ((fid&FSYS_DIR_FIDMASK) >= v->files_ffree) return(ioq->iostatus = FSYS_IO_NOTOPEN);
     rfh = fsys_find_ramfh(v, (fid&FSYS_DIR_FIDMASK));
     if (!rfh->valid) return(ioq->iostatus = FSYS_IO_NOTOPEN);
@@ -7861,7 +7869,7 @@ static void readbws_q( QioIOQ *ioq)
     {
         if (!QIO_ERR_CODE(sts))
         {
-            switch ((int)ioq->user2)
+            switch (qio_cvtFromPtr(ioq->user2))
             {
             case 0: {           /* now have file mutex */
                     U32 hwhere = hisioq->iparam0; /* get his requested where */
@@ -7942,7 +7950,7 @@ static void readbws_q( QioIOQ *ioq)
  * waiting on the mutex for the file then calling readwpos_q().
  */
 
-static int fsys_readwpos( QioIOQ *ioq, off_t where, void *buf, long len )
+static int fsys_readwpos( QioIOQ *ioq, off_t where, void *buf, int32_t len )
 {
     FsysQio *q;
     QioFile *fp;
@@ -8038,7 +8046,7 @@ static void read_q( QioIOQ *ioq )
  * waiting on the mutex for the file then calling read_q().
  */
 
-static int fsys_read( QioIOQ *ioq, void *buf, long len )
+static int fsys_read( QioIOQ *ioq, void *buf, int32_t len )
 {
     FsysQio *q;
     int sts;
@@ -8057,7 +8065,7 @@ static void fsys_write_done( QioIOQ *ioq )
     QioIOQ *hisioq;
     QioFile *fp;
     FsysVolume *v;
-    unsigned int fid;
+    uint32_t fid;
     FsysRamFH *rfh;
     int lim;
     U32 npos;
@@ -8068,7 +8076,7 @@ static void fsys_write_done( QioIOQ *ioq )
     v = (FsysVolume *)fp->dvc->private;
     hisioq = q->callers_ioq;
     fp = qio_fd2file(hisioq->file);
-    fid = (int)fp->private;
+    fid = qio_cvtFromPtr(fp->private);
     rfh = fsys_find_ramfh(v, (fid&FSYS_DIR_FIDMASK));
     if (!(fp->flags&QIO_FFLAG_CANCEL) && !(fp->mode&FSYS_OPNCPY_M))
     {
@@ -8122,18 +8130,18 @@ static void fsys_write_done( QioIOQ *ioq )
     return;
 }
 
-static int validate_write( QioIOQ *ioq, const void *buf, long len )
+static int validate_write( QioIOQ *ioq, const void *buf, int32_t len )
 {
     FsysQio *q;
     QioFile *fp;
     FsysVolume *v;
-    U32 fid;
+    uint32_t fid;
     FsysRamFH *rfh;
 
     if (!ioq) return QIO_INVARG;
     fp = qio_fd2file(ioq->file);
     v = (FsysVolume *)fp->dvc->private;
-    fid = (int)fp->private;
+    fid = qio_cvtFromPtr(fp->private);
     if ((fid&FSYS_DIR_FIDMASK) >= v->files_ffree) return(ioq->iostatus = FSYS_IO_NOTOPEN);
     rfh = fsys_find_ramfh(v, (fid&FSYS_DIR_FIDMASK));
     if (!rfh->valid) return(ioq->iostatus = FSYS_IO_NOTOPEN);
@@ -8161,7 +8169,7 @@ static int validate_write( QioIOQ *ioq, const void *buf, long len )
  * waiting on the mutex for the file then calling writewpos_q().
  */
 
-static int fsys_writewpos( QioIOQ *ioq, off_t where, const void *buf, long len )
+static int fsys_writewpos( QioIOQ *ioq, off_t where, const void *buf, int32_t len )
 {
     FsysQio *q;
     int sts;
@@ -8194,7 +8202,7 @@ static void write_q( QioIOQ *ioq )
     return;
 }
 
-static int fsys_write( QioIOQ *ioq, const void *buf, long len )
+static int fsys_write( QioIOQ *ioq, const void *buf, int32_t len )
 {
     int sts;
     FsysQio *q;
@@ -8221,7 +8229,7 @@ static void ioctl_setfh( QioIOQ *ioq )
     FsysVolume *vol;
     FsysFHIoctl *ctl;
     FsysRamFH *rfh;
-    int fid, afid;
+    uint32_t fid, afid;
 #if !FSYS_READ_ONLY
     FsysRamRP *rp;
     int ii, jj, copies;
@@ -8241,7 +8249,7 @@ static void ioctl_setfh( QioIOQ *ioq )
         }
         else
         {
-            fid = (int)fp->private;
+            fid = qio_cvtFromPtr(fp->private);
             afid = fid & FSYS_DIR_FIDMASK;
             rfh = fsys_find_ramfh(vol, afid);
             ctl = (FsysFHIoctl *)ioq->pparam0;
@@ -8374,7 +8382,7 @@ static int purge_rp( FsysVolume *vol, FsysRamRP *top, int tofree)
 static void ioctl_rpstuff( QioIOQ *ioq )
 {
     int ii, jj, rc;
-    int fid, afid;
+    uint32_t fid, afid;
     QioFile *fp;
     FsysRPIoctl *iocrp;
     FsysVolume *vol;
@@ -8393,7 +8401,7 @@ static void ioctl_rpstuff( QioIOQ *ioq )
         iocrp = (FsysRPIoctl *)ioq->pparam0;
         iocrp->out_rp = iocrp->tot_rp = 0;  /* in case of error */
         retptr = iocrp->rps;        /* point to "his" array of retrieval pointers */
-        fid = (int)fp->private;
+        fid = qio_cvtFromPtr(fp->private);
         afid = fid & FSYS_DIR_FIDMASK;
         rfh = fsys_find_ramfh(vol, afid);
         rc = FSYS_IO_SUCC|SEVERITY_INFO;    /* assume success */
@@ -8492,7 +8500,7 @@ static void ioctl_rpstuff( QioIOQ *ioq )
 static int fsys_ioctl( QioIOQ *ioq, unsigned int cmd, void *arg )
 {
     int sts, ii, jj;
-    int fid, afid;
+    uint32_t fid, afid;
     QioFile *fp;
     FsysFHIoctl *ctl;
     FsysRPIoctl *iocrp;
@@ -8518,7 +8526,7 @@ static int fsys_ioctl( QioIOQ *ioq, unsigned int cmd, void *arg )
                 sts = QIO_INVARG;
                 break;
             }
-            fid = (int)fp->private;
+            fid = qio_cvtFromPtr(fp->private);
             afid = fid & FSYS_DIR_FIDMASK;
             rfh = fsys_find_ramfh(vol, afid);
             ctl->fields = FSYS_FHFIELDS_ALLOC
@@ -8566,7 +8574,7 @@ static int fsys_ioctl( QioIOQ *ioq, unsigned int cmd, void *arg )
             U32 *his_lbas = (U32 *)arg;
             U32 *our_lbas;
 
-            fid = (int)fp->private;
+            fid = qio_cvtFromPtr(fp->private);
             afid = fid & FSYS_DIR_FIDMASK;
             our_lbas = ENTRY_IN_INDEX(vol, afid);
             for (fid=0; fid < FSYS_MAX_ALTS; ++fid) *his_lbas++ = *our_lbas++ & FSYS_LBA_MASK;
@@ -8646,13 +8654,13 @@ static int fsys_ioctl( QioIOQ *ioq, unsigned int cmd, void *arg )
 static void fsys_close_upd(QioIOQ *ioq)
 {
     QioFile *file;
-    int fid, afid;
+    uint32_t fid, afid;
     FsysRamFH *rfh;
     FsysVolume *vol;
 
     file = qio_fd2file(ioq->file);
     vol = (FsysVolume *)file->dvc->private;
-    fid = (int)file->private;
+    fid = qio_cvtFromPtr(file->private);
     afid = fid & FSYS_DIR_FIDMASK;
     rfh = fsys_find_ramfh(vol, afid);
     if ((rfh->fh_upd))
@@ -8756,7 +8764,7 @@ static int fsys_close( QioIOQ *ioq)
 {
     QioFile *file;
     FsysVolume *vol;
-    U32 fid, afid;
+    uint32_t fid, afid;
     FsysRamFH *rfh;
 
     if (!ioq) return QIO_INVARG;
@@ -8765,7 +8773,7 @@ static int fsys_close( QioIOQ *ioq)
 
     vol = (FsysVolume *)file->dvc->private;
     if (!vol) return(ioq->iostatus = FSYS_OPEN_NOTOPEN);
-    fid = (int)file->private;
+    fid = qio_cvtFromPtr(file->private);
     afid = fid & FSYS_DIR_FIDMASK;
     if (afid >= vol->files_ffree) return(ioq->iostatus = FSYS_IO_NOTOPEN);
     rfh = fsys_find_ramfh(vol, afid);
@@ -8883,13 +8891,13 @@ static int fsys_fstat( QioIOQ *ioq, struct stat *st )
     QioFile *file;
     FsysVolume *vol;
     FsysRamFH *rfh;
-    U32 fid, afid;
+    uint32_t fid, afid;
 
     file = qio_fd2file(ioq->file);      /* get pointer to file */
     if (!file) return(ioq->iostatus = FSYS_OPEN_NOTOPEN);
     vol = (FsysVolume *)file->dvc->private;
     if (!vol) return(ioq->iostatus = FSYS_OPEN_NOTOPEN);
-    fid = (int)file->private;
+    fid = qio_cvtFromPtr(file->private);
     afid = fid & FSYS_DIR_FIDMASK;
     if (afid >= vol->files_ffree) return(ioq->iostatus = FSYS_IO_NOTOPEN);
     rfh = fsys_find_ramfh(vol, afid);
@@ -8921,7 +8929,7 @@ static int fsys_isatty( QioIOQ *ioq )
 
 #if FSYS_HAS_DIRENT
 static FsysDIR *dir_pool_head;
-static int dir_pool_batch;
+static int32_t dir_pool_batch;
 static int num_dirs;
     #ifndef FSYS_DIR_BATCH
         #define FSYS_DIR_BATCH (32)
@@ -8951,7 +8959,7 @@ static FsysDIR *fsys_getDIR(void)
             }
             else
             {
-                dir_pool_batch = (int)st->value;
+                dir_pool_batch = qio_cvtFromPtr(st->value);
             }
         }
         else
@@ -9205,7 +9213,7 @@ static void initfs_compl(QioIOQ *fioq)
     sts = fioq->iostatus;
     if (!QIO_ERR_CODE(sts))
     {
-        switch ((int)fioq->user)
+        switch (qio_cvtFromPtr(fioq->user))
         {
         case INITFSC_BEGIN: {
 #if !FSYS_USE_PARTITION_TABLE
@@ -10380,10 +10388,10 @@ int FSYS_TEST_NAME(const struct menu_d *smp)
         goto err_exit;
     }
     {
-        long siz;
+        int32_t siz;
         unsigned char *bufp;
 #if !FSYS_USE_MALLOC
-        long amt;
+        int32_t amt;
         struct _reent *where;
 
         siz = 65536l;

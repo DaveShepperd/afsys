@@ -1,9 +1,7 @@
 /* See LICENSE.txt for license details */
-
-#include <config.h>
-#include <os_proto.h>
-#include <qio.h>
-#include <fsys.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE (1)
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -11,6 +9,11 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "config.h"
+#include "os_proto.h"
+#include "qio.h"
+#include "fsys.h"
 
 #define AFSYS_DIR_Q	(0x01)		/* No totals */
 #define AFSYS_DIR_F	(0x02)		/* command file format */
@@ -33,7 +36,7 @@ static void dmp_line(FsysRamFH *rfh, int fmt, U32 fid, const char *path, const c
     }
     if ((fmt&AFSYS_DIR_L))
     {
-        fprintf(ofp, "%d %08lX %8ld %8ld %s %s%s%c\n", 
+        fprintf(ofp, "%d %08X %8d %8d %s %s%s%c\n", 
                 copies,
                 fid,
                 rfh->clusters,
@@ -44,7 +47,7 @@ static void dmp_line(FsysRamFH *rfh, int fmt, U32 fid, const char *path, const c
     }
     else
     {
-        fprintf(ofp, "%d %9ld %s %s%s%c\n", 
+        fprintf(ofp, "%d %9d %s %s%s%c\n", 
                 copies,
                 rfh->size,
                 ftim,
@@ -237,7 +240,7 @@ int afsys_dir(int format, FILE *ofp)
         sts = 1;
         if (!(format&(AFSYS_DIR_Q|AFSYS_DIR_F)))
         {
-            fprintf(ofp, "A total of %ld sectors unaccounted for\n", volumes[0].maxlba - (used+free));
+            fprintf(ofp, "A total of %d sectors unaccounted for\n", volumes[0].maxlba - (used+free));
         }
     }
     fflush(ofp);

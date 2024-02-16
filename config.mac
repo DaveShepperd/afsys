@@ -18,13 +18,15 @@ REM < Special Game Flags	>
 ; >>->  Define your processor and other hardware features
 ;
 	.include constants.mac
-	HEX_CONST PROCESSOR		I86x32   ;MIPS7000L
+	HEX_CONST PROCESSOR		I86x32
+	DEC_CONST NO_LONGLONG 0		<Allow long long types>
 ;
 	.include pptypes.mac
 ;
-	HEX_CONST HOST_BOARD 		I86_PC ;VEGAS
+	HEX_CONST HOST_BOARD 		I86_PC
 ;
 	DEC_CONST _GNU_SOURCE	1	<Compile with GCC>
+;	DEC_CONST _ISOC99_SOURCE  1	<Select stuff from c99 spec>
 	DEC_CONST NO_NEWLIB_FUNCS 1	<Not using newlib>
 _LINUX_ == 1
 .if true, OUTPUT_LANG == LANG_C

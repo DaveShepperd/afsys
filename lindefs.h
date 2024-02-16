@@ -161,6 +161,15 @@ LOCAL INLINE int ctl_mod_intctl(int _new) {
 
 #endif  /* Any MIPS */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE (1)
+#endif
+/*
+#ifndef _ISOC99_SOURCE
+#define _ISOC99_SOURCE (1)
+#endif
+*/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

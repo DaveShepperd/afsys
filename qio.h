@@ -55,7 +55,12 @@ extern "C" {
 #endif
 
 #ifndef QIO_ALIGN
-# define QIO_ALIGN(x, amt) (((U32)(x)+((amt)-1))&-(amt))
+#if !defined(__SIZEOF_POINTER__) || __SIZEOF_POINTER__ == __SIZEOF_INT__
+# define QIO_ALIGN(x, amt) (void *)(((U32)(x)+((amt)-1))&-(amt))
+#else
+extern void *qio_align(void *ptr, int algn);
+#define QIO_ALIGN(x, amt) qio_align((void *)(x), amt)
+#endif
 #endif
 
 #ifndef QIO_MK_NONCACHE
@@ -83,6 +88,32 @@ the character and the string
 # define QIO_FNAME_SEPARATOR	(QIO_FNAME_SEPARATOR_STR[0])
 #endif
 
+#if _LINUX_
+#ifndef S_IFMT
+#define S_IFMT     0170000   /* bit mask for the file type bit field */
+#endif
+#ifndef S_IFSOCK
+#define S_IFSOCK   0140000   /* socket */
+#endif
+#ifndef S_IFLNK
+#define S_IFLNK    0120000   /* symbolic link */
+#endif
+#ifndef S_IFREG
+#define S_IFREG    0100000   /* regular file */
+#endif
+#ifndef S_IFBLK
+#define S_IFBLK    0060000   /* block device */
+#endif
+#ifndef S_IFDIR
+#define S_IFDIR    0040000   /* directory */
+#endif
+#ifndef S_IFCHR
+#define S_IFCHR    0020000   /* character device */
+#endif
+#ifndef S_IFIFO
+#define S_IFIFO    0010000   /* FIFO */
+#endif
+#endif
 
 /**************************************************************************
 The QIO subsystem uses a re-enterant malloc, et al. to get memory to hold its
@@ -184,7 +215,7 @@ THEM AND DO NOT CHANGE THE ORDER OF THESE MEMBERS.
  * This field is only an input and no qio functions will alter it.
  * Set this field to 0 if no timeout is to be used.
  */
-    long timeout;		/* I/O timeout amount in microseconds */
+    int32_t timeout;		/* I/O timeout amount in microseconds */
 /*
  * The following two members are set by the qio function to the status
  * and I/O count respectively (or other values as defined by the specific
@@ -192,8 +223,8 @@ THEM AND DO NOT CHANGE THE ORDER OF THESE MEMBERS.
  * so their contents at entry to a qio call is not relevant unless
  * specified otherwise by the specific qio function.
  */
-    volatile long iostatus;	/* I/O completion status */
-    volatile long iocount;	/* I/O xfer count or FD after qio_open */
+    volatile int32_t iostatus;	/* I/O completion status */
+    volatile int32_t iocount;	/* I/O xfer count or FD after qio_open */
 
 /* The 'complete' member holds a pointer to a user completion routine.
  * This member is only an input and no qio function will alter this member.
@@ -227,9 +258,9 @@ THEM AND DO NOT CHANGE THE ORDER OF THESE MEMBERS.
     void *pparam0;
     void *pparam1;
     void *pparam2;
-    long iparam0;
-    long iparam1;
-    long iparam2;
+    int32_t iparam0;
+    int32_t iparam1;
+    int32_t iparam2;
     int semaphore;		/* used by Xinu wait mode I/O */
 } QioIOQ;
 
@@ -266,11 +297,11 @@ typedef struct qio_device {
 
 typedef struct qio_file {
     int mode;			/* access mode */
-    unsigned long sect;		/* current sector position in file */
-    unsigned long bws;		/* byte within sector of next byte to r/w */
-    unsigned long size;		/* size of file in bytes */
-    unsigned long flags;	/* misc flags */
-    unsigned long gen;		/* generation number */
+    uint32_t sect;		/* current sector position in file */
+    uint32_t bws;		/* byte within sector of next byte to r/w */
+    uint32_t size;		/* size of file in bytes */
+    uint32_t flags;	/* misc flags */
+    uint32_t gen;		/* generation number */
     const QioDevice *dvc;	/* ptr to device that this file is on */
     void *Q_PRIVATE;		/* reserved for use by network, qio and fsys */
     void *private2;		/* reserved for use by network */
@@ -297,8 +328,8 @@ struct qio_statfs;			/* defined later */
 
 typedef struct qio_file_ops {
     int (*lseek) (QioIOQ *ioq, off_t where, int whence);
-    int (*read) (QioIOQ *ioq, void *buf, long len);
-    int (*write) (QioIOQ *ioq, const void *buf, long len);  
+    int (*read) (QioIOQ *ioq, void *buf, int32_t len);
+    int (*write) (QioIOQ *ioq, const void *buf, int32_t len);  
     int (*ioctl) (QioIOQ *ioq, unsigned int cmd, void *arg);
     int (*open) (QioIOQ *ioq, const char *name);
     int (*close) (QioIOQ *ioq);
@@ -312,16 +343,16 @@ typedef struct qio_file_ops {
     int (*fstat) (QioIOQ *ioq, struct stat *stat);
     int (*cancel) (QioIOQ *ioq);
     int (*isatty) (QioIOQ *ioq);
-    int (*readwpos) (QioIOQ *ioq, off_t where, void *buf, long len);
-    int (*writewpos) (QioIOQ *ioq, off_t where, const void *buf, long len);  
+    int (*readwpos) (QioIOQ *ioq, off_t where, void *buf, int32_t len);
+    int (*writewpos) (QioIOQ *ioq, off_t where, const void *buf, int32_t len);  
     int (*opendir) (QioIOQ *ioq, void **dpp, const char *name);
     int (*seekdir) (QioIOQ *ioq, void *dirp);
     int (*telldir) (QioIOQ *ioq, void *dirp);
     int (*rewdir) (QioIOQ *ioq, void *dirp);
     int (*readdir) (QioIOQ *ioq, void *dirp, void *directp);
     int (*closedir) (QioIOQ *ioq, void *dirp);
-    int (*readv) (QioIOQ *ioq, const IOVect *iov, long iovcnt);
-    int (*writev) (QioIOQ *ioq, const IOVect *iov, long iovcnt);  
+    int (*readv) (QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);
+    int (*writev) (QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);  
 } QioFileOps;
 
 /********************************************************************************
@@ -956,8 +987,8 @@ extern int fstatfs(int fd, struct statfs *st, int len, int fstyp);
  *	returns non-zero (qio error code) if not queued; completion
  *	routine will not be called in that case.
  */
-extern int qio_read(QioIOQ *ioq, void *buf, long len);
-extern int qiow_read(QioIOQ *ioq, void *buf, long len);
+extern int qio_read(QioIOQ *ioq, void *buf, int32_t len);
+extern int qiow_read(QioIOQ *ioq, void *buf, int32_t len);
 
 /****************************************************************
  * qio_readwpos - read bytes from file after positioning to 'where'
@@ -986,8 +1017,8 @@ extern int qiow_read(QioIOQ *ioq, void *buf, long len);
  *	returns non-zero (qio error code) if not queued; completion
  *	routine will not be called in that case.
  */
-extern int qio_readwpos(QioIOQ *ioq, off_t where, void *buf, long len);
-extern int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, long len);
+extern int qio_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len);
+extern int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, int32_t len);
 
 /************************************************************
  * qio_write - write bytes to file
@@ -1011,8 +1042,8 @@ extern int qiow_readwpos(QioIOQ *ioq, off_t where, void *buf, long len);
  *	returns non-zero (qio error code) if not queued; completion
  *	routine will not be called in that case.
  */
-extern int qio_write(QioIOQ *ioq, const void *buf, long len);
-extern int qiow_write(QioIOQ *ioq, const void *buf, long len);
+extern int qio_write(QioIOQ *ioq, const void *buf, int32_t len);
+extern int qiow_write(QioIOQ *ioq, const void *buf, int32_t len);
 
 /****************************************************************
  * qio_writewpos - write bytes to file after position to 'where'
@@ -1042,8 +1073,8 @@ extern int qiow_write(QioIOQ *ioq, const void *buf, long len);
  *	returns non-zero (qio error code) if not queued; completion
  *	routine will not be called in that case.
  */
-extern int qio_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len);
-extern int qiow_writewpos(QioIOQ *ioq, off_t where, const void *buf, long len);
+extern int qio_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len);
+extern int qiow_writewpos(QioIOQ *ioq, off_t where, const void *buf, int32_t len);
 
 /************************************************************
  * qio_lseek - seek a file to a specific position
@@ -1145,8 +1176,8 @@ extern int qio_rewdir(QioIOQ *ioq, void *dirp);
 extern int qiow_rewdir(QioIOQ *ioq, void *dirp);
 extern int qio_closedir(QioIOQ *ioq, void *dirp);
 extern int qiow_closedir(QioIOQ *ioq, void *dirp);
-extern int qio_seekdir(QioIOQ *ioq, void *dirp, long loc);
-extern int qiow_seekdir(QioIOQ *ioq, void *dirp, long loc);
+extern int qio_seekdir(QioIOQ *ioq, void *dirp, int32_t loc);
+extern int qiow_seekdir(QioIOQ *ioq, void *dirp, int32_t loc);
 extern int qio_telldir(QioIOQ *ioq, void *dirp);
 extern int qiow_telldir(QioIOQ *ioq, void *dirp);
 
@@ -1210,8 +1241,8 @@ extern int qiow_cancel(QioIOQ *ioq);
  *	routine will not be called in that case.
  */
 
-extern int qio_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt);
-extern int qiow_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt);
+extern int qio_readv(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);
+extern int qiow_readv(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);
 
 /************************************************************
  * qio_writev - write output from scattered buffers
@@ -1229,8 +1260,8 @@ extern int qiow_readv(QioIOQ *ioq, const IOVect *iov, long iovcnt);
  *	routine will not be called in that case.
  */
 
-extern int qio_writev(QioIOQ *ioq, const IOVect *iov, long iovcnt);  
-extern int qiow_writev(QioIOQ *ioq, const IOVect *iov, long iovcnt);  
+extern int qio_writev(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);  
+extern int qiow_writev(QioIOQ *ioq, const IOVect *iov, int32_t iovcnt);  
 
 #if (!defined(_LINUX_) || !_LINUX_) && !defined(__cplusplus)
 /************************************************************
@@ -1309,7 +1340,7 @@ extern int qio_errmsg(int sts, char *ans, int size);
 
 #ifndef QIO_ERR_MSG
 #define QIO_ERROR(x) ( (x) & ((1<<QIOSTAT_SHIFT)-1) )
-#define QIO_ERR_MISC(x) ( (unsigned long)(x) >> QIOSTAT_SHIFT )
+#define QIO_ERR_MISC(x) ( (uint32_t)(x) >> QIOSTAT_SHIFT )
 #define QIO_ERR_CODE(x) ( (x) & ((1<<SEVERITY_SHIFT)-1) )
 #define QIO_ERR_SEV(x)	( ((x) >> SEVERITY_SHIFT) & 3 )
 #define QIO_ERR_FAC(x)	( ((x) >> FACILITY_SHIFT) )
@@ -1335,6 +1366,16 @@ enum error_codes {
 #ifdef __cplusplus
 }
 #endif 
+
+#if !defined(__SIZEOF_POINTER__) || (__SIZEOF_POINTER__ > __SIZEOF_INT__)
+extern uint32_t qio_cvtFromPtr( const void *inp);
+extern void *qio_cvtToPtr( uint32_t inp);
+#else
+#define qio_cvtFromPtr(x) (uint32_t)(x)
+#define qio_cvtToPtr(x) (void*)(x)
+#endif
+
+
 #endif				/* _QIO_H_ */
 
 #ifdef QIO_FACILITY_MSG

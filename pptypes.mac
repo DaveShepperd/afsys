@@ -13,6 +13,11 @@ _PPTYPES_MAC_	== 0
 .if true, OUTPUT_LANG == LANG_C
 #if !defined(_PPTYPES_H_)
 #define _PPTYPES_H_
+#include <stdint.h>
+   HEX_CONST S32_MAX 0x7FFFFFFF
+   HEX_CONST S32_MIN 0x80000000
+   HEX_CONST U32_MAX 0xFFFFFFFF
+   HEX_CONST U32_MIN 0x00000000
 .endc
  .if ndf,NO_LONGLONG
    HEX_CONST NO_LONGLONG 1
@@ -22,62 +27,77 @@ _PPTYPES_MAC_	== 0
 REM <	Actual Type Declarations>
 ;
  .if ne,ANSI_OK
-  .if true, ((NO_LONGLONG == 0) && ((PROCESSOR & -16) == MIPS4000))
+ .if true, (((PROCESSOR & -16) == MIPS4000) || (PROCESSOR == I86x32) || (PROCESSOR == I86x64))
+  .if true, (NO_LONGLONG != 0)
+	TYPE	VS64	<volatile int64_t> 8
+	TYPE	VU64	<volatile uint64_t> 8
+  .iff
 	TYPE	VS64	<volatile long long> 8
 	TYPE	VU64	<volatile unsigned long long> 8
   .endc
-	TYPE	VS32	<volatile long> 4
-	TYPE	VS16	<volatile short> 2
-	TYPE	VS8	<volatile signed char> 1
-	TYPE	VS08	<volatile signed char> 1
-	TYPE	VU32	<volatile unsigned long> 4
-	TYPE	VU16	<volatile unsigned short> 2
-	TYPE	VU8	<volatile unsigned char> 1
-	TYPE	VU08	<volatile unsigned char> 1
+ .endc
+ 	TYPE	VS32	<volatile int32_t> 4
+	TYPE	VS16	<volatile int16_t> 2
+	TYPE	VS8	<volatile int8_t> 1
+	TYPE	VS08	<volatile int8_t> 1
+	TYPE	VU32	<volatile uint32_t> 4
+	TYPE	VU16	<volatile uint16_t> 2
+	TYPE	VU8	<volatile uint8_t> 1
+	TYPE	VU08	<volatile uint8_t> 1
 	TYPE	VF32	<volatile float> 4
 	TYPE	VF64	<volatile double> 8
  .endc
  .if eq,ANSI_OK
-  .if true, ((NO_LONGLONG == 0) && ((PROCESSOR & -16) == MIPS4000))
-	TYPE	VS64	< long long> 8
-	TYPE	VU64	< unsigned long long> 8
+ .if true, (((PROCESSOR & -16) == MIPS4000) || (PROCESSOR == I86x32) || (PROCESSOR == I86x64))
+  .if true, (NO_LONGLONG != 0)
+	TYPE	VS64	<int64_t> 8
+	TYPE	VU64	<uint64_t> 8
+  .iff
+	TYPE	VS64	<long long> 8
+	TYPE	VU64	<unsigned long long> 8
   .endc
-	TYPE	VS32	< long> 4
-	TYPE	VS16	< short> 2
-	TYPE	VS8	< char> 1
-	TYPE	VS08	< char> 1
-	TYPE	VU32	< unsigned long> 4
-	TYPE	VU16	< unsigned short> 2
-	TYPE	VU8	< unsigned char> 1
-	TYPE	VU08	< unsigned char> 1
+ .endc
+	TYPE	VS32	< int32_t> 4
+	TYPE	VS16	< int16_t> 2
+	TYPE	VS8	< int8_t> 1
+	TYPE	VS08	< int8_t> 1
+	TYPE	VU32	< uint32_t> 4
+	TYPE	VU16	< uint16_t> 2
+	TYPE	VU8	< uint8_t> 1
+	TYPE	VU08	< uint8_t> 1
 	TYPE	VF32	< float> 4
 	TYPE	VF64	< double> 8
  .endc
  .if true ,(PROCESSOR == M68010) || (PROCESSOR == M68000)
-	TYPE	m_int	<short> 2 
-	TYPE	m_uint	<unsigned short> 2
+	TYPE	m_int	<int16_t> 2 
+	TYPE	m_uint	<uint16_t> 2
  .iff
-	TYPE	m_int	<int> 4 
-	TYPE	m_uint	<unsigned int> 4
+	TYPE	m_int	<int32_t> 4 
+	TYPE	m_uint	<uint32_t> 4
  .endc
-	TYPE	U8	<unsigned char> 1
-	TYPE	U08	<unsigned char> 1
+	TYPE	U8	<uint8_t> 1
+	TYPE	U08	<uint8_t> 1
  .if ne,ANSI_OK
-	TYPE	S8	<signed char> 1
-	TYPE	S08	<signed char> 1
+	TYPE	S8	<int8_t> 1
+	TYPE	S08	<int8_t> 1
  .iff
-	TYPE	S8	<char> 1
-	TYPE	S08	<char> 1
+	TYPE	S8	<int8_t> 1
+	TYPE	S08	<int8_t> 1
  .endc
-	TYPE	U16	<unsigned short> 2
-	TYPE	S16	<short> 2
-	TYPE	U32	<unsigned long> 4
-	TYPE	S32	<long> 4
+	TYPE	U16	<uint16_t> 2
+	TYPE	S16	<int16_t> 2
+	TYPE	U32	<uint32_t> 4
+	TYPE	S32	<int32_t> 4
 	TYPE	F32	<float> 4
 	TYPE	F64	<double> 8
- .if true, ((NO_LONGLONG == 0) && ((PROCESSOR & -16) == MIPS4000))
-	TYPE	U64	< unsigned long long> 8
-	TYPE	S64	< long long> 8
+ .if true, (((PROCESSOR & -16) == MIPS4000) || (PROCESSOR == I86x32) || (PROCESSOR == I86x64))
+  .if true, (NO_LONGLONG != 0)
+	TYPE	S64	<int64_t> 8
+	TYPE	U64	<uint64_t> 8
+  .iff
+	TYPE	S64	<long long> 8
+	TYPE	U64	<unsigned long long> 8
+  .endc
  .endc
 	TYPE	RD_TYP	<struct rdb> 12
 	TYPE	RR_TYP	<struct rrb> 16
@@ -97,9 +117,9 @@ struct menub {
 };
 ;
 struct creditsb {
-	unsigned short	crd_whole;	/* Integer part of coins	*/
-	unsigned char	crd_num;	/* numerator			*/
-	unsigned char	crd_denom;	/* denominator			*/
+	uint16_t	crd_whole;	/* Integer part of coins	*/
+	uint8_t		crd_num;	/* numerator			*/
+	uint8_t		crd_denom;	/* denominator			*/
 };
 REM <	General purpose Environment Table structure>
 	STR_START	st_envar
