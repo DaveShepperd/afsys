@@ -39,9 +39,9 @@ DBG = -g
 OPT = #-O2
 
 # Compile build mode
-CMODE = -std=c99 -m32 -mtune=generic
+CMODE = -std=c99 #-m32 -mtune=generic
 # Link mode
-LMODE = -m32
+LMODE = #-m32
 
 DEFS  = -D_LINUX_
 DEFS += -D_LARGEFILE64_SOURCE

@@ -998,7 +998,9 @@ static int do_it(int dowhat, ParseUnion *pf, FILE *ofp)
     ioq = qio_getioq();
     do
     {
-        if ((dowhat&DO_INIT) && pf && pf->type == PARSE_TYPE_VOL)
+        if ( debug_level )
+            printf("do_it(): dowhat=0x%X, ptype=%d\n", dowhat, pf?pf->type:0);
+        if ( (dowhat & DO_INIT) && pf && pf->type == PARSE_TYPE_VOL )
         {
             FsysInitVol ivol;
             struct stat st;
@@ -1665,6 +1667,11 @@ int main(int argc, char *argv[])
             }
         }
         if ((dowhat&DO_DIR) && unix_name && unix_name[0] == '-') dowhat &= ~DO_DIR;
+        if ( !(dowhat&(DO_DIR|DO_DIR_Q|DO_DIR_F|DO_DIR_L)) && (dowhat&(DO_TOATARI|DO_TOUNIX)) && !atari_name && !unix_name )
+        {
+            printf("With a -t or -u, you also have to provide a filename with one or both 'a=xx' and 'u=xx'\n);");
+            return 1;
+        }
         memset(&tpu, 0, sizeof(tpu));
         memset(&tvol, 0, sizeof(tvol));
         snprintf(tphys, sizeof(tphys), "/rd%d", unit);
