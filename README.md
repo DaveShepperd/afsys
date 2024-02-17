@@ -16,8 +16,8 @@ no requirement this standalone tool needed async I/O. It was simply an exercise 
 has ever asked for such a thing and I just stuffed it away in an archive. Lately there's been some interest in resurrecting some old Atari Games and Midway Games West products
 from the early 2000's and I've seen some old game code show up on github and other places, so I thought this tool might come in handy for somebody someday.
 
-I've only ever built and tested this code on a Linux system running on an x86 machine built as a 32 bit app with -m32 and recently on a Pi5 with v8 32 bit kernel (comment out
-the -m32 in CMOD and LMODE in the Makefile on a Pi). Your mileage may vary.
+I've only ever built and tested this code on an x86 Linux system (64 bit kernel) and a Raspberry Pi5 (32 bit kernel, version 8). Seems to work without incident. I just recently
+made edits to allow it to build and run properly on a 64 bit kernel. Previously it needed a -m32 option on gcc.
 
 It is not an interactive tool. What has to be done is either feed commands to it via a -c option or run it individually for each file to read or write. The syntax for the commands
 is a bit obscure. One way to help find out what you might do is to get a listing of the current disk image in command mode using -lf, edit the result and feed it back via -c.
