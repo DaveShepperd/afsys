@@ -24,3 +24,34 @@ is a bit obscure. One way to help find out what you might do is to get a listing
 
 Sorry, but it's been too long. I don't remember what all the different commands do or what can be done. I never made any documentation on how to work the tool. Probably it's
 best just to use the tool to replace file(s) with more updated ones or to pick them off the filesystem to see what's in them but otherwise leave things alone on the game disk.
+
+Note, there may or may not be a partition table depending on the game. The Partition table, if there is one, is always found in sector 0 on the disk and the game's filesystem
+always gnores sector 0. The upshot of this is you always have to refer to the disk (or its image) in a raw mode. I.e. /dev/sdg and not with /dev/sdg1, etc. If a disk image
+is made, it too has to start the copy at sector 0 of the disk. I.e. `dd if=/dev/sdg of=disk.img` instead of `dd if=/dev/sdg1 of=disk.img`.
+
+# Examples
+
+Here is a technique one might use to extract all the files off a game disk image. First create an empty directory and cd into it:
+
+`mkdir game_files; cd game_files`
+
+Run afsys like this:
+
+`afsys -U disk.img -lf > ../game_files.cmd`
+
+Edit `../game_files.cmd` and change the line `DEFAULT UNIX=/d0 GAME=/d0 COPIES=1` to `DEFAULT UNIX=. GAME=/d0 COPIES=1`. Run afsys again:
+
+`afsys -U disk.img -c ../game_files.cmd -u`
+
+You should find all the files and directories present in the current default directory.
+
+If you want to write an updated file back to the game disk, this ought to work:
+
+`afsys -U disk.img -c ../game_files.cmd -t`
+
+If for some inexplicable reason you want to create a new game disk image and copy all the game files to the new disk image, this ought to work:
+
+`afsys -U disk.img -c ../game_files.cmd -F -N -t`
+
+Note with **San Francisco Rush Tournament Edition**, you must use -P instead of -N when also using -F to preserve the partition table that game uses.
+
