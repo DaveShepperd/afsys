@@ -9,6 +9,10 @@ on all systems). As it turned out, that was a complete waste of time being that 
 copies of files since within an ever shortening period of time the drive would just quit working altogether and need replacing. I suppose it meant the unit lasted a few more months
 than it would have otherwise, but I doubt any system survived what it was meant to.
 
+>[!NOTE]
+>I've been working on a Linux driver for this Atari/MidwayGames filesystem. It can be found in the repo [mgwfs](https://github.com/daveshepperd/mgwfs.git).
+>At this writing, it is readonly and only builds and runs on Fedora 41 and UbuntuLTS24. Someday it may be fully read/write and possibly ported to PiOS.
+
 In any case, after the place closed up shop, I thought it might be interesting to adapt what the game code used in a Linux environment to be able to read/write old game disks.
 So around 2003 I wrote this program using bits and pieces from game code. Note, in the game the disk I/O was done using threads and was completely async (it used a QIO system
 I cooked up). Under Linux and to make it real simple I thought I could just replicate the QIO subsystem to be single threaded. That works just fine especially since there is
