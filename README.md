@@ -30,7 +30,7 @@ Sorry, but it's been too long. I don't remember what all the different commands 
 best just to use the tool to replace file(s) with more updated ones or to pick them off the filesystem to see what's in them but otherwise leave things alone on the game disk.
 
 Note, there may or may not be a partition table depending on the game. The Partition table, if there is one, is always found in sector 0 on the disk and the game's filesystem
-always gnores sector 0. The upshot of this is you always have to refer to the disk (or its image) in a raw mode. I.e. /dev/sdg and not with /dev/sdg1, etc. If a disk image
+always ignores sector 0. The upshot of this is you always have to refer to the disk (or its image) in a raw mode. I.e. /dev/sdg and not with /dev/sdg1, etc. If a disk image
 is made, it too has to start the copy at sector 0 of the disk. I.e. `dd if=/dev/sdg of=disk.img` instead of `dd if=/dev/sdg1 of=disk.img`.
 
 # Examples
